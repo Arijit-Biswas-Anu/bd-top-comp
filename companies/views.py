@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 import json
 
 from .models import Company
@@ -15,6 +16,7 @@ def index(request):
     return render(request, 'companies/index.html')
 
 
+@csrf_exempt
 def login_view(request):
     """Handle admin login page"""
     if request.method == 'GET':
@@ -56,6 +58,7 @@ def dashboard(request):
     return render(request, 'companies/index.html')
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def logout_view(request):
     """Handle admin logout"""
@@ -95,7 +98,7 @@ def api_get_companies(request):
     return JsonResponse({'companies': companies_data})
 
 
-@require_http_methods(["POST"])
+@csrf_exempt
 @login_required(login_url='/login/')
 def api_add_company(request):
     """Add new company (admin only)"""
@@ -159,6 +162,7 @@ def api_add_company(request):
 
 
 @require_http_methods(["POST"])
+@csrf_exempt
 @login_required(login_url='/login/')
 def api_edit_company(request, id):
     """Edit existing company (admin only)"""
@@ -229,6 +233,7 @@ def api_edit_company(request, id):
 
 
 @require_http_methods(["POST"])
+@csrf_exempt
 @login_required(login_url='/login/')
 def api_delete_company(request, id):
     """Delete company (admin only)"""
