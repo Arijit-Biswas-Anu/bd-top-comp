@@ -654,6 +654,149 @@ function deleteCompanyFromDetail() {
     }, 300);
 }
 
+/**
+ * Show advanced filters panel
+ */
+function showAdvancedFilters() {
+    const panel = document.getElementById('advancedFilterPanel');
+    if (panel) {
+        panel.style.display = 'flex';
+        
+        // Close panel when clicking outside
+        setTimeout(() => {
+            panel.addEventListener('click', function(e) {
+                if (e.target === panel) {
+                    closeAdvancedFilters();
+                }
+            });
+        }, 0);
+    }
+}
+
+/**
+ * Close advanced filters panel
+ */
+function closeAdvancedFilters() {
+    const panel = document.getElementById('advancedFilterPanel');
+    if (panel) {
+        panel.style.display = 'none';
+    }
+}
+
+/**
+ * Apply advanced filters
+ */
+function applyAdvancedFilters() {
+    const search = document.getElementById('filterSearch').value;
+    const sector = document.getElementById('filterSector').value;
+    const founded = document.getElementById('filterFounded').value;
+    const hq = document.getElementById('filterHQ').value;
+    const sort = document.getElementById('filterSort').value;
+    const order = document.getElementById('filterOrder').value;
+    
+    // Update global search and sector
+    currentSearch = search;
+    currentSector = sector;
+    currentSort = sort;
+    currentOrder = order;
+    currentPage = 1; // Reset to page 1
+    
+    // Close the filter panel
+    closeAdvancedFilters();
+    
+    // Reload companies with new filters
+    loadCompanies();
+    
+    // Show feedback
+    showAlert('Filters applied! 🎯', 'info');
+}
+
+/**
+ * Clear all filters
+ */
+function clearAllFilters() {
+    // Reset search input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    
+    // Reset sector dropdown
+    const sectorFilter = document.getElementById('sectorFilter');
+    if (sectorFilter) sectorFilter.value = '';
+    
+    // Reset filter panel inputs
+    document.getElementById('filterSearch').value = '';
+    document.getElementById('filterSector').value = '';
+    document.getElementById('filterFounded').value = '';
+    document.getElementById('filterHQ').value = '';
+    document.getElementById('filterSort').value = 'name';
+    document.getElementById('filterOrder').value = 'asc';
+    
+    // Reset global variables
+    currentSearch = '';
+    currentSector = '';
+    currentSort = 'name';
+    currentOrder = 'asc';
+    currentPage = 1;
+    
+    // Close filter panel
+    closeAdvancedFilters();
+    
+    // Reload companies
+    loadCompanies();
+    
+    // Show feedback
+    showAlert('Filters cleared! 🔄', 'info');
+}
+
+/**
+ * Keyboard Navigation Support
+ */
+function initKeyboardNavigation() {
+    document.addEventListener('keydown', function(e) {
+        // Escape key closes modals and filter panel
+        if (e.key === 'Escape') {
+            closeAdvancedFilters();
+            
+            // Close any open modals
+            const modals = document.querySelectorAll('.modal.show');
+            modals.forEach(modal => {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) bsModal.hide();
+            });
+        }
+        
+        // Ctrl/Cmd + F opens search focus
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+        
+        // Ctrl/Cmd + K opens advanced filters
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            showAdvancedFilters();
+        }
+        
+        // Arrow keys for pagination
+        if (e.key === 'ArrowRight' && e.ctrlKey) {
+            e.preventDefault();
+            if (currentPage < totalPages) {
+                goToPage(currentPage + 1);
+            }
+        }
+        
+        if (e.key === 'ArrowLeft' && e.ctrlKey) {
+            e.preventDefault();
+            if (currentPage > 1) {
+                goToPage(currentPage - 1);
+            }
+        }
+    });
+}
+
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initialized');
@@ -662,5 +805,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initSearch();
     initSectorFilter();
     initAddCompany();
+    initKeyboardNavigation();
 });
 

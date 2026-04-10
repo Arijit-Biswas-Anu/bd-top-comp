@@ -38,6 +38,18 @@
             </select>
         </div>
     </div>
+    <div class="row g-2 mt-2">
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" id="advancedFilterBtn" onclick="showAdvancedFilters()">
+                ⚙ Advanced Filters
+            </button>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" id="clearFilterBtn" onclick="clearAllFilters()">
+                ✕ Clear Filters
+            </button>
+        </div>
+    </div>
     <div class="search-filter-info">
         Results update instantly as you search and filter
     </div>
@@ -246,6 +258,69 @@
                     <button type="button" class="btn btn-danger" id="deleteDetailBtn" onclick="deleteCompanyFromDetail()">Delete</button>
                 {% endif %}
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Filter Panel (Mobile-Friendly Slide-up) -->
+<div class="filter-modal-overlay" id="advancedFilterPanel" style="display: none;">
+    <div class="filter-panel">
+        <div class="filter-panel-header">
+            <h5>Advanced Filters</h5>
+            <button type="button" class="btn-close" onclick="closeAdvancedFilters()" aria-label="Close"></button>
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterSearch">Search</label>
+            <input type="text" class="form-control" id="filterSearch" placeholder="Company name, sector, HQ...">
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterSector">Sector</label>
+            <select class="form-select" id="filterSector">
+                <option value="">All Sectors</option>
+                <option value="Telecom">Telecommunications</option>
+                <option value="Banking">Banking & Finance</option>
+                <option value="Pharmaceuticals">Pharmaceuticals</option>
+                <option value="Energy">Energy</option>
+                <option value="Consumer Goods">Consumer Goods</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="Technology">Technology</option>
+                <option value="Shipping">Shipping</option>
+                <option value="Conglomerate">Conglomerate</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterFounded">Founded After</label>
+            <input type="number" class="form-control" id="filterFounded" placeholder="e.g., 1990" min="1900" max="2026">
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterHQ">Headquarters</label>
+            <input type="text" class="form-control" id="filterHQ" placeholder="City or location...">
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterSort">Sort By</label>
+            <select class="form-select" id="filterSort">
+                <option value="name">Company Name</option>
+                <option value="founded">Founded Year</option>
+                <option value="sector">Sector</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterOrder">Order</label>
+            <select class="form-select" id="filterOrder">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
+        </div>
+        
+        <div class="filter-button-group">
+            <button type="button" class="btn btn-secondary" onclick="closeAdvancedFilters()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="applyAdvancedFilters()">Apply Filters</button>
         </div>
     </div>
 </div>
