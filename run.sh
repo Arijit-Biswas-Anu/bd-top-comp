@@ -24,6 +24,13 @@ if [ ! -d "$VENV_DIR" ]; then
     exit 1
 fi
 
+# Kill any existing process on port 8000
+if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+    echo -e "${YELLOW}⚠ Port 8000 already in use. Cleaning up...${NC}"
+    lsof -ti:8000 | xargs kill -9 2>/dev/null
+    sleep 1
+fi
+
 # Activate virtual environment
 echo -e "${GREEN}✓ Activating virtual environment...${NC}"
 source "$VENV_DIR/bin/activate"
