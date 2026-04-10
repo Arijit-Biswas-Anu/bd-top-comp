@@ -87,6 +87,11 @@
         </ul>
     </div>
     
+    <!-- Phase 13B: Analytics Button -->
+    <button class="btn btn-warning" id="analyticsBtn" onclick="showAnalyticsDashboard()" title="View analytics dashboard">
+        📈 Analytics
+    </button>
+    
     <span class="admin-badge">👤 Admin Mode</span>
 </div>
 {% endif %}
@@ -369,9 +374,72 @@
     </div>
 </div>
 
+<!-- Phase 13B: Analytics Dashboard Modal -->
+<div class="modal fade" id="analyticsDashboardModal" tabindex="-1" aria-labelledby="analyticsDashboardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content analytics-modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="analyticsDashboardLabel">📊 Analytics Dashboard</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="analyticsDashboardBody">
+                <div class="row">
+                    <!-- Analytics Stats Cards -->
+                    <div class="col-md-12 mb-4">
+                        <div class="row" id="analyticsStatsCards">
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Total Companies</h6> <p id="totalCompaniesCard" class="stat-value">--</p> </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Total Sectors</h6> <p id="totalSectorsCard" class="stat-value">--</p> </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Avg Founded Year</h6> <p id="avgFoundedCard" class="stat-value">--</p> </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Year Range</h6> <p id="yearRangeCard" class="stat-value small">--</p> </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts -->
+                    <div class="col-md-6 mb-4">
+                        <h6>Sector Distribution</h6>
+                        <div class="chart-container">
+                            <canvas id="sectorChart" style="max-height: 300px;"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <h6>Founded Decade Distribution</h6>
+                        <div class="chart-container">
+                            <canvas id="decadeChart" style="max-height: 300px;"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Companies -->
+                    <div class="col-md-12 mb-4">
+                        <h6>Recently Added Companies</h6>
+                        <div class="recent-companies-list" id="recentCompaniesList">
+                            <p class="text-muted text-center">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="exportAnalytics()">📥 Export Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
 <script>
     // Initialize page when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {

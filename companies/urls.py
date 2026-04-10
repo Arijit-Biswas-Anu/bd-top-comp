@@ -16,4 +16,11 @@ urlpatterns = [
     path('api/stats/', views.api_get_stats, name='api_stats'),
     path('api/export/csv/', views.api_export_csv, name='api_export_csv'),
     path('api/export/summary/', views.api_export_summary, name='api_export_summary'),
+    
+    # Phase 13B: Analytics endpoints
+    path('api/analytics/dashboard/', views.api_analytics_dashboard, name='api_analytics_dashboard'),
+    path('api/analytics/comparison/', views.api_company_comparison, name='api_company_comparison'),
+    path('api/analytics/sector/', views.api_sector_insights, name='api_sector_insights'),
+    path('api/analytics/growth/', views.api_growth_analysis, name='api_growth_analysis'),
+    path('api/analytics/stats/', views.api_descriptive_stats, name='api_descriptive_stats'),
 ]

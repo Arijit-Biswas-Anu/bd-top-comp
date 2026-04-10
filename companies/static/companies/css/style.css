@@ -1714,7 +1714,160 @@ textarea:focus {
     }
 }
 
-/* Print styles */
+/* ===== PHASE 13B: ANALYTICS DASHBOARD STYLES ===== */
+
+#analyticsBtn {
+    margin-left: 0.5rem;
+}
+
+.analytics-modal-content {
+    border: 2px solid #0a66bd;
+    border-radius: 0.75rem;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.analytics-modal-content .modal-header {
+    background: linear-gradient(135deg, #0a66bd 0%, #2c5aa0 100%);
+    color: white;
+    border-bottom: 3px solid #083f87;
+    font-weight: 600;
+}
+
+.analytics-modal-content .modal-body {
+    padding: 2rem;
+    background-color: #f8f9fa;
+}
+
+.stat-card {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(10, 102, 189, 0.2);
+    border-color: #0a66bd;
+}
+
+.stat-card h6 {
+    margin-bottom: 0.5rem;
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    margin-bottom: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0a66bd;
+}
+
+.stat-value.small {
+    font-size: 1.25rem;
+}
+
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #dee2e6;
+}
+
+.recent-companies-list {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.recent-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.recent-item {
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+    transition: all 0.2s ease;
+}
+
+.recent-item:last-child {
+    border-bottom: none;
+}
+
+.recent-item:hover {
+    background-color: #f8f9fa;
+    border-left: 4px solid #0a66bd;
+    padding-left: 0.75rem;
+}
+
+.recent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.recent-header strong {
+    color: #0a66bd;
+}
+
+.recent-header .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+}
+
+.recent-details {
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+.recent-details small {
+    display: block;
+    margin-top: 0.25rem;
+}
+
+/* Analytics modal scrollbar styling */
+.analytics-modal-content .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.analytics-modal-content .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.analytics-modal-content .modal-body::-webkit-scrollbar-thumb {
+    background: #0a66bd;
+    border-radius: 4px;
+}
+
+.analytics-modal-content .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #083f87;
+}
+
+/* Chart.js responsive sizing */
+#sectorChart,
+#decadeChart {
+    max-height: 350px;
+}
+
+/* Print styles for analytics */
 @media print {
     body {
         background-color: white;

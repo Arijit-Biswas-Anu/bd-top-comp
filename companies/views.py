@@ -430,4 +430,277 @@ def api_export_summary(request):
         }, status=400)
 
 
+# ===== PHASE 13B: ANALYTICS ENDPOINTS =====
+
+@require_http_methods(["GET"])
+@login_required(login_url='/login/')
+def api_analytics_dashboard(request):
+    """Get comprehensive analytics for dashboard"""
+    try:
+        companies = Company.objects.all()
+        
+        # Calculate statistics
+        total_companies = companies.count()
+        total_sectors = companies.values('sector').distinct().count()
+        
+        # Founded year range
+        founded_years = companies.exclude(founded__isnull=True).values_list('founded', flat=True)
+        if founded_years:
+            min_year = min(founded_years)
+            max_year = max(founded_years)
+            avg_year = sum(founded_years) / len(founded_years)
+        else:
+            min_year = max_year = avg_year = None
+        
+        # Sector distribution
+        sector_distribution = list(
+            companies.values('sector').annotate(count=Count('sector')).order_by('-count')
+        )
+        
+        # Companies by founded decade
+        decade_stats = {}
+        for company in companies.filter(founded__isnull=False):
+            decade = (company.founded // 10) * 10
+            decade_key = f"{decade}s"
+            decade_stats[decade_key] = decade_stats.get(decade_key, 0) + 1
+        
+        # Recently added companies (last 5)
+        recent_companies = companies.order_by('-created_at')[:5]
+        recent_list = [{
+            'id': c.id,
+            'name': c.name,
+            'sector': c.sector,
+            'founded': c.founded,
+            'created_at': c.created_at.strftime('%Y-%m-%d')
+        } for c in recent_companies]
+        
+        # Top sectors
+        top_sectors = sorted(sector_distribution, key=lambda x: x['count'], reverse=True)[:5]
+        
+        return JsonResponse({
+            'success': True,
+            'statistics': {
+                'total_companies': total_companies,
+                'total_sectors': total_sectors,
+                'avg_founded_year': round(avg_year) if avg_year else None,
+                'founded_year_range': {
+                    'min': min_year,
+                    'max': max_year
+                }
+            },
+            'sector_distribution': sector_distribution,
+            'decade_stats': decade_stats,
+            'recent_companies': recent_list,
+            'top_sectors': top_sectors
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error fetching analytics: {str(e)}'
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+@login_required(login_url='/login/')
+def api_company_comparison(request):
+    """Compare multiple companies"""
+    try:
+        company_ids = request.GET.getlist('ids', [])
+        
+        if not company_ids:
+            # Compare all companies if no specific IDs provided
+            companies = Company.objects.all()
+        else:
+            companies = Company.objects.filter(id__in=company_ids)
+        
+        comparison_data = [{
+            'id': c.id,
+            'name': c.name,
+            'sector': c.sector,
+            'headquarter': c.headquarters,
+            'founded': c.founded,
+            'description': c.description[:100] + '...' if c.description and len(c.description) > 100 else c.description,
+            'created_at': c.created_at.strftime('%Y-%m-%d'),
+            'updated_at': c.updated_at.strftime('%Y-%m-%d')
+        } for c in companies.order_by('name')]
+        
+        # Calculate comparison metrics
+        if companies:
+            founded_years = [c.founded for c in companies if c.founded]
+            comparison_metrics = {
+                'total': companies.count(),
+                'avg_founded': round(sum(founded_years) / len(founded_years)) if founded_years else None,
+                'oldest': min(founded_years) if founded_years else None,
+                'newest': max(founded_years) if founded_years else None,
+                'sectors': list(companies.values_list('sector', flat=True).distinct())
+            }
+        else:
+            comparison_metrics = {}
+        
+        return JsonResponse({
+            'success': True,
+            'companies': comparison_data,
+            'metrics': comparison_metrics
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error comparing companies: {str(e)}'
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+@login_required(login_url='/login/')
+def api_sector_insights(request):
+    """Get detailed insights for a specific sector"""
+    try:
+        sector = request.GET.get('sector', '').strip()
+        
+        if not sector:
+            return JsonResponse({
+                'success': False,
+                'message': 'Sector parameter required'
+            }, status=400)
+        
+        companies = Company.objects.filter(sector__iexact=sector)
+        
+        if not companies:
+            return JsonResponse({
+                'success': False,
+                'message': f'No companies found in sector: {sector}'
+            }, status=404)
+        
+        # Calculate metrics
+        founded_years = [c.founded for c in companies if c.founded]
+        company_list = [{
+            'id': c.id,
+            'name': c.name,
+            'founded': c.founded,
+            'headquarters': c.headquarters
+        } for c in companies.order_by('name')]
+        
+        insights = {
+            'sector': sector,
+            'company_count': companies.count(),
+            'companies': company_list,
+            'founded_range': {
+                'oldest': min(founded_years) if founded_years else None,
+                'newest': max(founded_years) if founded_years else None,
+                'average': round(sum(founded_years) / len(founded_years)) if founded_years else None
+            },
+            'decade_distribution': {
+                f"{(year // 10) * 10}s": sum(1 for y in founded_years if (y // 10) * 10 == (year // 10) * 10)
+                for year in founded_years
+            }
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'insights': insights
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error fetching sector insights: {str(e)}'
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+@login_required(login_url='/login/')
+def api_growth_analysis(request):
+    """Analyze company growth over time (by addition date)"""
+    try:
+        from django.db.models.functions import TruncDate
+        from django.db.models import Count
+        import datetime
+        
+        # Get last 30 days of additions
+        thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+        
+        daily_additions = Company.objects.filter(
+            created_at__gte=thirty_days_ago
+        ).extra(
+            select={'date': 'DATE(created_at)'}
+        ).values('date').annotate(count=Count('id')).order_by('date')
+        
+        # Format for chart
+        growth_data = [{
+            'date': str(item['date']),
+            'additions': item['count']
+        } for item in daily_additions]
+        
+        # Calculate growth metrics
+        total_additions = sum(item['count'] for item in daily_additions)
+        avg_daily = round(total_additions / max(1, len(growth_data))) if growth_data else 0
+        
+        return JsonResponse({
+            'success': True,
+            'growth_data': growth_data,
+            'metrics': {
+                'total_additions_30d': total_additions,
+                'avg_daily_additions': avg_daily,
+                'days_with_additions': len(growth_data)
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error analyzing growth: {str(e)}'
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+@login_required(login_url='/login/')
+def api_descriptive_stats(request):
+    """Get descriptive statistics about companies"""
+    try:
+        companies = Company.objects.all()
+        
+        founded_years = [c.founded for c in companies if c.founded]
+        
+        if not founded_years:
+            return JsonResponse({
+                'success': False,
+                'message': 'No founded year data available'
+            }, status=400)
+        
+        founded_years.sort()
+        n = len(founded_years)
+        
+        # Calculate statistics
+        mean = sum(founded_years) / n
+        median = (founded_years[n // 2] + founded_years[(n - 1) // 2]) / 2 if n > 0 else 0
+        variance = sum((x - mean) ** 2 for x in founded_years) / n if n > 0 else 0
+        std_dev = variance ** 0.5
+        
+        stats = {
+            'founded_year_statistics': {
+                'count': n,
+                'mean': round(mean, 2),
+                'median': round(median, 2),
+                'std_dev': round(std_dev, 2),
+                'min': min(founded_years),
+                'max': max(founded_years),
+                'range': max(founded_years) - min(founded_years),
+                'q1': sorted(founded_years)[n // 4] if n > 0 else None,
+                'q3': sorted(founded_years)[3 * n // 4] if n > 0 else None
+            },
+            'sector_statistics': {
+                'total_unique': Company.objects.values('sector').distinct().count(),
+                'distribution': list(
+                    Company.objects.values('sector').annotate(count=Count('sector')).order_by('-count')
+                )
+            },
+            'all_companies': companies.count()
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'statistics': stats
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error calculating statistics: {str(e)}'
+        }, status=400)
 

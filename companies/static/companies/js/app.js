@@ -1191,6 +1191,251 @@ function initAdvancedFiltering() {
     updatePresetsUI();
 }
 
+// ===== PHASE 13B: ANALYTICS DASHBOARD =====
+
+let analyticCharts = {}; // Store chart instances for cleanup
+
+/**
+ * Show analytics dashboard modal
+ */
+function showAnalyticsDashboard() {
+    const modal = new bootstrap.Modal(document.getElementById('analyticsDashboardModal'));
+    modal.show();
+    
+    // Load analytics data
+    loadAnalyticsData();
+}
+
+/**
+ * Load analytics data from backend
+ */
+function loadAnalyticsData() {
+    fetch('/api/analytics/dashboard/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayAnalyticsData(data);
+            } else {
+                showAlert('Error loading analytics', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Failed to load analytics', 'error');
+        });
+}
+
+/**
+ * Display analytics data and create charts
+ */
+function displayAnalyticsData(data) {
+    const stats = data.statistics;
+    const sectors = data.sector_distribution;
+    const decades = data.decade_stats;
+    const recent = data.recent_companies;
+    
+    // Update stat cards
+    document.getElementById('totalCompaniesCard').textContent = stats.total_companies;
+    document.getElementById('totalSectorsCard').textContent = stats.total_sectors;
+    document.getElementById('avgFoundedCard').textContent = stats.avg_founded_year || '--';
+    
+    const yearRange = stats.founded_year_range;
+    if (yearRange.min && yearRange.max) {
+        document.getElementById('yearRangeCard').textContent = 
+            `${yearRange.min} - ${yearRange.max}`;
+    }
+    
+    // Create sector chart
+    createSectorChart(sectors);
+    
+    // Create decade chart
+    createDecadeChart(decades);
+    
+    // Display recent companies
+    displayRecentCompanies(recent);
+}
+
+/**
+ * Create sector distribution chart
+ */
+function createSectorChart(sectors) {
+    // Destroy existing chart if it exists
+    if (analyticCharts.sectorChart) {
+        analyticCharts.sectorChart.destroy();
+    }
+    
+    const ctx = document.getElementById('sectorChart');
+    if (!ctx) return;
+    
+    const labels = sectors.map(s => s.sector);
+    const data = sectors.map(s => s.count);
+    
+    const colors = [
+        '#0a66bd', '#2c5aa0', '#d4af37', '#ff6b6b', '#4dabf7',
+        '#51cf66', '#ffd43b', '#a78bfa', '#fb7185', '#06b6d4'
+    ];
+    
+    analyticCharts.sectorChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors.slice(0, data.length),
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Create decade distribution chart
+ */
+function createDecadeChart(decades) {
+    // Destroy existing chart if it exists
+    if (analyticCharts.decadeChart) {
+        analyticCharts.decadeChart.destroy();
+    }
+    
+    const ctx = document.getElementById('decadeChart');
+    if (!ctx) return;
+    
+    const labels = Object.keys(decades).sort();
+    const data = labels.map(label => decades[label]);
+    
+    analyticCharts.decadeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Companies Founded',
+                data: data,
+                backgroundColor: '#0a66bd',
+                borderColor: '#083f87',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Display recently added companies
+ */
+function displayRecentCompanies(companies) {
+    const container = document.getElementById('recentCompaniesList');
+    
+    if (!companies || companies.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No recent companies</p>';
+        return;
+    }
+    
+    let html = '<div class="recent-list">';
+    companies.forEach(company => {
+        html += `
+            <div class="recent-item">
+                <div class="recent-header">
+                    <strong>${company.name}</strong>
+                    <span class="badge bg-primary">${company.sector}</span>
+                </div>
+                <div class="recent-details">
+                    <small>Founded: ${company.founded} | Added: ${company.created_at}</small>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+/**
+ * Export analytics report as PDF/JSON
+ */
+function exportAnalytics() {
+    fetch('/api/analytics/dashboard/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+                
+                const exportFileDefaultName = 'analytics_report.json';
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+                
+                showAlert('Analytics report exported! 📥', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Failed to export analytics', 'error');
+        });
+}
+
+/**
+ * Compare multiple companies
+ */
+function compareCompanies(ids) {
+    const queryString = ids.map(id => `ids=${id}`).join('&');
+    
+    fetch(`/api/analytics/comparison/?${queryString}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(`Comparing ${data.companies.length} companies`, 'info');
+                console.log('Comparison data:', data);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Failed to compare companies', 'error');
+        });
+}
+
+/**
+ * Get sector insights
+ */
+function getSectorInsights(sector) {
+    fetch(`/api/analytics/sector/?sector=${encodeURIComponent(sector)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Sector insights:', data.insights);
+                showAlert(`${sector}: ${data.insights.company_count} companies`, 'info');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Failed to get sector insights', 'error');
+        });
+}
+
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initialized');
