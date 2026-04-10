@@ -69,18 +69,69 @@ def logout_view(request):
 # ===== AJAX API Endpoints =====
 
 @require_http_methods(["GET"])
-def api_get_companies(request):
-    """Get all companies or search by name/sector"""
-    search_term = request.GET.get('search', '').strip()
+def api_get_stats(request):
+    """Get statistics about companies"""
+    from django.db.models import Count
     
+    # Total companies
+    total_companies = Company.objects.count()
+    
+    # Companies by sector
+    sector_stats = Company.objects.values('sector').annotate(count=Count('sector')).order_by('-count')
+    
+    # Get all sectors for filter dropdown
+    all_sectors = Company.objects.values_list('sector', flat=True).distinct().order_by('sector')
+    
+    return JsonResponse({
+        'total_companies': total_companies,
+        'sectors': [
+            {'name': stat['sector'], 'count': stat['count']} 
+            for stat in sector_stats
+        ],
+        'all_sectors': list(all_sectors),
+    })
+
+@require_http_methods(["GET"])
+def api_get_companies(request):
+    """Get all companies with optional search, filtering, and pagination"""
+    search_term = request.GET.get('search', '').strip()
+    sector = request.GET.get('sector', '').strip()
+    sort_by = request.GET.get('sort', 'name').strip()  # name, founded, sector
+    sort_order = request.GET.get('order', 'asc').strip()  # asc or desc
+    page = int(request.GET.get('page', '1'))
+    limit = int(request.GET.get('limit', '50'))
+    
+    # Start with all companies
+    companies = Company.objects.all()
+    
+    # Apply search filter
     if search_term:
         from django.db.models import Q
-        companies = Company.objects.filter(
+        companies = companies.filter(
             Q(name__icontains=search_term) | 
-            Q(sector__icontains=search_term)
+            Q(sector__icontains=search_term) |
+            Q(headquarters__icontains=search_term) |
+            Q(description__icontains=search_term)
         )
-    else:
-        companies = Company.objects.all()
+    
+    # Apply sector filter
+    if sector:
+        companies = companies.filter(sector__iexact=sector)
+    
+    # Count total before pagination
+    total_count = companies.count()
+    
+    # Apply sorting
+    if sort_by == 'founded':
+        companies = companies.order_by(f'{"-" if sort_order == "desc" else ""}founded')
+    elif sort_by == 'sector':
+        companies = companies.order_by(f'{"-" if sort_order == "desc" else ""}sector')
+    else:  # default: name
+        companies = companies.order_by(f'{"-" if sort_order == "desc" else ""}name')
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    paginated = companies[offset:offset + limit]
     
     companies_data = [
         {
@@ -92,10 +143,18 @@ def api_get_companies(request):
             'founded': c.founded,
             'description': c.description or '',
         }
-        for c in companies
+        for c in paginated
     ]
     
-    return JsonResponse({'companies': companies_data})
+    return JsonResponse({
+        'companies': companies_data,
+        'pagination': {
+            'page': page,
+            'limit': limit,
+            'total': total_count,
+            'pages': (total_count + limit - 1) // limit  # ceiling division
+        }
+    })
 
 
 @csrf_exempt

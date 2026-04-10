@@ -63,7 +63,6 @@ function showAlert(message, type = 'success') {
  */
 async function loadCompanies() {
     const tableBody = document.getElementById('companiesTableBody');
-    const noResultsMessage = document.getElementById('noResultsMessage');
     
     if (!tableBody) return;
     
@@ -74,10 +73,52 @@ async function loadCompanies() {
         const data = await response.json();
         allCompanies = data.companies || [];
         
+        // Store pagination info
+        if (data.pagination) {
+            window.paginationInfo = data.pagination;
+        }
+        
         displayCompaniesInTable(allCompanies);
     } catch (error) {
         console.error('Error:', error);
         tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading companies</td></tr>';
+    }
+}
+
+/**
+ * Load statistics
+ */
+async function loadStats() {
+    try {
+        const response = await fetch('/api/stats/');
+        if (!response.ok) throw new Error('Failed to load stats');
+        
+        const data = await response.json();
+        
+        // Update sector filter with stats
+        const sectorFilter = document.getElementById('sectorFilter');
+        if (sectorFilter && data.all_sectors) {
+            // Clear existing options except "All Sectors"
+            const firstOption = sectorFilter.options[0];
+            sectorFilter.innerHTML = '';
+            sectorFilter.appendChild(firstOption);
+            
+            // Add sectors with count
+            data.all_sectors.forEach(sector => {
+                const count = data.sectors.find(s => s.name === sector)?.count || 0;
+                const option = document.createElement('option');
+                option.value = sector;
+                option.textContent = `${sector} (${count})`;
+                sectorFilter.appendChild(option);
+            });
+        }
+        
+        // Display sector statistics if we have a stats container
+        if (data.sectors) {
+            console.log('Sector Stats:', data.sectors);
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
     }
 }
 
@@ -407,5 +448,10 @@ function handleLogout() {
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initialized');
+    loadCompanies();
+    loadStats();
+    initSearch();
+    initSectorFilter();
+    initAddCompany();
 });
 

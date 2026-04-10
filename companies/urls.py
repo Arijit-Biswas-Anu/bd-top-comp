@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/companies/add/', views.api_add_company, name='api_add_company'),
     path('api/companies/<int:id>/edit/', views.api_edit_company, name='api_edit_company'),
     path('api/companies/<int:id>/delete/', views.api_delete_company, name='api_delete_company'),
+    path('api/stats/', views.api_get_stats, name='api_stats'),
 ]
