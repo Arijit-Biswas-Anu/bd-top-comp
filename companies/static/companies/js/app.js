@@ -797,6 +797,48 @@ function initKeyboardNavigation() {
     });
 }
 
+/**
+ * Export data to CSV
+ */
+function exportToCSV() {
+    const search = document.getElementById('searchInput')?.value || '';
+    const sector = document.getElementById('sectorFilter')?.value || '';
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (sector) params.append('sector', sector);
+    if (currentSort) params.append('sort', currentSort);
+    if (currentOrder) params.append('order', currentOrder);
+    
+    // Trigger download
+    window.location.href = `/api/export/csv/?${params.toString()}`;
+    
+    showAlert('Companies exported to CSV! 📥', 'success');
+}
+
+/**
+ * Export summary report
+ */
+function exportSummary() {
+    window.location.href = '/api/export/summary/';
+    showAlert('Summary report exported! 📊', 'success');
+}
+
+/**
+ * Initialize pagination size selector
+ */
+function initPaginationSizeSelector() {
+    const selector = document.getElementById('pageLimitSelect');
+    if (!selector) return;
+    
+    selector.addEventListener('change', function() {
+        currentLimit = parseInt(this.value);
+        currentPage = 1; // Reset to page 1
+        loadCompanies();
+    });
+}
+
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initialized');
@@ -806,5 +848,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initSectorFilter();
     initAddCompany();
     initKeyboardNavigation();
+    initPaginationSizeSelector();
 });
 

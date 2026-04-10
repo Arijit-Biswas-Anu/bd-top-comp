@@ -1,10 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 import json
+import csv
+from django.db.models import Q, Count
 
 from .models import Company
 
@@ -314,6 +316,117 @@ def api_delete_company(request, id):
         return JsonResponse({
             'success': False,
             'message': str(e)
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+@login_required(login_url='/login/')
+def api_export_csv(request):
+    """Export companies to CSV based on current filters"""
+    try:
+        # Get filter parameters from query string
+        search_term = request.GET.get('search', '').strip()
+        sector = request.GET.get('sector', '').strip()
+        sort_by = request.GET.get('sort', 'name').strip()
+        sort_order = request.GET.get('order', 'asc').strip()
+        
+        # Start with all companies
+        companies = Company.objects.all()
+        
+        # Apply search filter
+        if search_term:
+            companies = companies.filter(
+                Q(name__icontains=search_term) | 
+                Q(sector__icontains=search_term) |
+                Q(headquarters__icontains=search_term) |
+                Q(description__icontains=search_term)
+            )
+        
+        # Apply sector filter
+        if sector:
+            companies = companies.filter(sector__iexact=sector)
+        
+        # Apply sorting
+        if sort_by == 'founded':
+            companies = companies.order_by(f'{"-" if sort_order == "desc" else ""}founded')
+        elif sort_by == 'sector':
+            companies = companies.order_by(f'{"-" if sort_order == "desc" else ""}sector')
+        else:
+            companies = companies.order_by(f'{"-" if sort_order == "desc" else ""}name')
+        
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="companies.csv"'
+        
+        # Create CSV writer
+        writer = csv.writer(response)
+        
+        # Write header row
+        writer.writerow([
+            'Company Name',
+            'Sector',
+            'Headquarters',
+            'Founded',
+            'Description',
+            'Added On',
+            'Last Updated'
+        ])
+        
+        # Write data rows
+        for company in companies:
+            writer.writerow([
+                company.name,
+                company.sector,
+                company.headquarters,
+                company.founded,
+                company.description or '',
+                company.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                company.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+            ])
+        
+        return response
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error exporting CSV: {str(e)}'
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+def api_export_summary(request):
+    """Export statistics summary"""
+    try:
+        total_companies = Company.objects.count()
+        sector_stats = Company.objects.values('sector').annotate(count=Count('sector')).order_by('-count')
+        
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="companies_summary.csv"'
+        
+        writer = csv.writer(response)
+        
+        # Summary header
+        writer.writerow(['Bangladesh Top Companies - Summary Report'])
+        writer.writerow(['Generated on', __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+        writer.writerow([])
+        
+        # Overall statistics
+        writer.writerow(['OVERALL STATISTICS'])
+        writer.writerow(['Total Companies', total_companies])
+        writer.writerow(['Total Sectors', sector_stats.count()])
+        writer.writerow([])
+        
+        # Sector breakdown
+        writer.writerow(['SECTOR BREAKDOWN'])
+        writer.writerow(['Sector', 'Count'])
+        for sector in sector_stats:
+            writer.writerow([sector['sector'], sector['count']])
+        
+        return response
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error exporting summary: {str(e)}'
         }, status=400)
 
 

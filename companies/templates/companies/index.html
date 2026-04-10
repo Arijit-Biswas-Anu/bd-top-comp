@@ -61,9 +61,33 @@
     <button class="btn btn-primary" id="addCompanyBtn">
         ✚ Add New Company
     </button>
+    <button class="btn btn-success" onclick="exportToCSV()" title="Download as CSV">
+        ⬇ Export CSV
+    </button>
+    <button class="btn btn-info" onclick="exportSummary()" title="Download summary report">
+        📊 Export Summary
+    </button>
     <span class="admin-badge">👤 Admin Mode</span>
 </div>
 {% endif %}
+
+<!-- Pagination & Display Controls -->
+<div class="display-controls" id="displayControls" style="display: none;">
+    <div class="row g-2 mt-2 mb-2">
+        <div class="col-auto">
+            <label for="pageLimitSelect" class="form-label mb-0">Results per page:</label>
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" id="pageLimitSelect" style="width: 80px;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="9999">All</option>
+            </select>
+        </div>
+    </div>
+</div>
 
 <!-- Statistics Section -->
 <div class="statistics-section" id="statsSection" style="display: none;">
