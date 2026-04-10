@@ -839,6 +839,358 @@ function initPaginationSizeSelector() {
     });
 }
 
+// ===== PHASE 12: ADVANCED FILTERING =====
+
+/**
+ * Search History Management
+ */
+const SearchHistory = {
+    storageKey: 'bd_company_search_history',
+    maxItems: 10,
+    
+    /**
+     * Add search to history
+     */
+    add(search, sector) {
+        if (!search && !sector) return;
+        
+        const history = this.getAll();
+        const entry = {
+            search: search || '',
+            sector: sector || '',
+            timestamp: new Date().toISOString()
+        };
+        
+        // Remove duplicate if exists
+        const filtered = history.filter(h => 
+            !(h.search === entry.search && h.sector === entry.sector)
+        );
+        
+        // Add new entry at beginning
+        filtered.unshift(entry);
+        
+        // Keep only maxItems
+        if (filtered.length > this.maxItems) {
+            filtered.pop();
+        }
+        
+        localStorage.setItem(this.storageKey, JSON.stringify(filtered));
+    },
+    
+    /**
+     * Get all search history
+     */
+    getAll() {
+        try {
+            const data = localStorage.getItem(this.storageKey);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error('Error reading search history:', e);
+            return [];
+        }
+    },
+    
+    /**
+     * Clear search history
+     */
+    clear() {
+        localStorage.removeItem(this.storageKey);
+        updateHistoryUI();
+        showAlert('Search history cleared! 🗑️', 'success');
+    },
+    
+    /**
+     * Get recent searches (last N)
+     */
+    getRecent(count = 5) {
+        return this.getAll().slice(0, count);
+    }
+};
+
+/**
+ * Filter Presets Management
+ */
+const FilterPresets = {
+    storageKey: 'bd_company_filter_presets',
+    
+    /**
+     * Save current filters as preset
+     */
+    save(name) {
+        if (!name || name.trim() === '') {
+            showAlert('Please enter a preset name', 'error');
+            return false;
+        }
+        
+        const presets = this.getAll();
+        
+        // Check for duplicate name
+        if (presets.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+            showAlert('Preset with this name already exists', 'error');
+            return false;
+        }
+        
+        const preset = {
+            id: Date.now(),
+            name: name.trim(),
+            search: currentSearch,
+            sector: currentSector,
+            sort: currentSort,
+            order: currentOrder,
+            limit: currentLimit,
+            createdAt: new Date().toISOString()
+        };
+        
+        presets.unshift(preset);
+        localStorage.setItem(this.storageKey, JSON.stringify(presets));
+        showAlert(`Preset "${name}" saved! 💾`, 'success');
+        updatePresetsUI();
+        return true;
+    },
+    
+    /**
+     * Load preset
+     */
+    load(id) {
+        const presets = this.getAll();
+        const preset = presets.find(p => p.id === id);
+        
+        if (!preset) return false;
+        
+        // Apply preset filters
+        currentSearch = preset.search;
+        currentSector = preset.sector;
+        currentSort = preset.sort;
+        currentOrder = preset.order;
+        currentLimit = preset.limit;
+        currentPage = 1;
+        
+        // Update UI
+        document.getElementById('searchInput').value = currentSearch;
+        document.getElementById('sectorFilter').value = currentSector;
+        document.getElementById('pageLimitSelect').value = currentLimit;
+        
+        // Reload data
+        loadCompanies();
+        showAlert(`Loaded preset: "${preset.name}" 📋`, 'success');
+        return true;
+    },
+    
+    /**
+     * Delete preset
+     */
+    delete(id) {
+        const presets = this.getAll();
+        const filtered = presets.filter(p => p.id !== id);
+        localStorage.setItem(this.storageKey, JSON.stringify(filtered));
+        updatePresetsUI();
+    },
+    
+    /**
+     * Get all presets
+     */
+    getAll() {
+        try {
+            const data = localStorage.getItem(this.storageKey);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error('Error reading presets:', e);
+            return [];
+        }
+    },
+    
+    /**
+     * Clear all presets
+     */
+    clear() {
+        localStorage.removeItem(this.storageKey);
+        updatePresetsUI();
+        showAlert('All presets cleared! 🗑️', 'success');
+    },
+    
+    /**
+     * Export presets as JSON
+     */
+    export() {
+        const presets = this.getAll();
+        const dataStr = JSON.stringify(presets, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = 'filter_presets.json';
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+        
+        showAlert('Presets exported! 📥', 'success');
+    },
+    
+    /**
+     * Import presets from JSON
+     */
+    import(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (!Array.isArray(imported)) throw new Error('Invalid format');
+                
+                const existing = this.getAll();
+                const merged = [...imported, ...existing];
+                
+                localStorage.setItem(this.storageKey, JSON.stringify(merged));
+                updatePresetsUI();
+                showAlert(`Imported ${imported.length} presets! 📤`, 'success');
+            } catch (err) {
+                showAlert('Invalid preset file!', 'error');
+            }
+        };
+        reader.readAsText(file);
+    }
+};
+
+/**
+ * Update search history UI dropdown
+ */
+function updateHistoryUI() {
+    const dropdown = document.getElementById('searchHistoryDropdown');
+    if (!dropdown) return;
+    
+    const history = SearchHistory.getRecent(8);
+    
+    if (history.length === 0) {
+        dropdown.innerHTML = '<div class="dropdown-item disabled text-muted">No search history</div>';
+        return;
+    }
+    
+    let html = '';
+    history.forEach((entry, index) => {
+        const search = entry.search || '(no search)';
+        const sector = entry.sector ? ` • ${entry.sector}` : '';
+        const label = `${search}${sector}`;
+        html += `<a class="dropdown-item" href="#" onclick="applyHistoryEntry(${index}); return false;">
+            <small>${label}</small>
+        </a>`;
+    });
+    
+    html += '<div class="dropdown-divider"></div>';
+    html += '<a class="dropdown-item" href="#" onclick="SearchHistory.clear(); return false;">🗑️ Clear History</a>';
+    
+    dropdown.innerHTML = html;
+}
+
+/**
+ * Apply history entry
+ */
+function applyHistoryEntry(index) {
+    const history = SearchHistory.getRecent(8);
+    const entry = history[index];
+    
+    if (!entry) return;
+    
+    currentSearch = entry.search;
+    currentSector = entry.sector;
+    currentPage = 1;
+    
+    document.getElementById('searchInput').value = currentSearch;
+    document.getElementById('sectorFilter').value = currentSector;
+    
+    loadCompanies();
+    showAlert('Applied history entry', 'info');
+}
+
+/**
+ * Update presets UI dropdown
+ */
+function updatePresetsUI() {
+    const dropdown = document.getElementById('presetsDropdown');
+    if (!dropdown) return;
+    
+    const presets = FilterPresets.getAll();
+    
+    if (presets.length === 0) {
+        dropdown.innerHTML = '<div class="dropdown-item disabled text-muted">No saved presets</div>';
+        return;
+    }
+    
+    let html = '<div style="max-height: 300px; overflow-y: auto;">';
+    presets.forEach(preset => {
+        html += `<div class="dropdown-item" style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="#" onclick="FilterPresets.load(${preset.id}); return false;" style="flex: 1; text-decoration: none; color: inherit;">
+                <small><strong>${preset.name}</strong></small><br>
+                <small style="color: #666;">${preset.search || '(no filter)'}${preset.sector ? ' • ' + preset.sector : ''}</small>
+            </a>
+            <button class="btn btn-sm btn-link text-danger" onclick="FilterPresets.delete(${preset.id}); updatePresetsUI(); return false;" title="Delete preset">🗑️</button>
+        </div>`;
+    });
+    html += '</div>';
+    html += '<div class="dropdown-divider"></div>';
+    html += `<a class="dropdown-item" href="#" onclick="savePresetDialog(); return false;">➕ Save Current</a>`;
+    html += `<a class="dropdown-item" href="#" onclick="document.getElementById('presetsImport').click(); return false;">📤 Import</a>`;
+    html += `<a class="dropdown-item" href="#" onclick="FilterPresets.export(); return false;">📥 Export</a>`;
+    html += `<a class="dropdown-item" href="#" onclick="FilterPresets.clear(); return false;">🗑️ Clear All</a>`;
+    
+    dropdown.innerHTML = html;
+}
+
+/**
+ * Show save preset dialog
+ */
+function savePresetDialog() {
+    const name = prompt('Enter preset name:', '');
+    if (name !== null) {
+        FilterPresets.save(name);
+    }
+}
+
+/**
+ * Handle preset file import
+ */
+function handlePresetsImport(event) {
+    const file = event.target.files[0];
+    if (file) {
+        FilterPresets.import(file);
+        event.target.value = ''; // Reset file input
+    }
+}
+
+/**
+ * Initialize advanced filtering
+ */
+function initAdvancedFiltering() {
+    // Update history when search changes
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        const originalOninput = searchInput.oninput;
+        searchInput.addEventListener('change', function() {
+            SearchHistory.add(this.value, currentSector);
+            updateHistoryUI();
+        });
+    }
+    
+    // Update history when sector changes
+    const sectorFilter = document.getElementById('sectorFilter');
+    if (sectorFilter) {
+        sectorFilter.addEventListener('change', function() {
+            SearchHistory.add(currentSearch, this.value);
+            updateHistoryUI();
+        });
+    }
+    
+    // Create hidden file input for preset import
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'presetsImport';
+    fileInput.accept = '.json';
+    fileInput.style.display = 'none';
+    fileInput.addEventListener('change', handlePresetsImport);
+    document.body.appendChild(fileInput);
+    
+    // Initialize UI
+    updateHistoryUI();
+    updatePresetsUI();
+}
+
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initialized');
@@ -849,5 +1201,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initAddCompany();
     initKeyboardNavigation();
     initPaginationSizeSelector();
+    initAdvancedFiltering();
 });
 

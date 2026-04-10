@@ -67,6 +67,26 @@
     <button class="btn btn-info" onclick="exportSummary()" title="Download summary report">
         📊 Export Summary
     </button>
+    
+    <!-- Phase 12: Advanced Filtering Dropdowns -->
+    <div class="btn-group" role="group">
+        <button class="btn btn-outline-secondary dropdown-toggle" id="historyBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Search history">
+            🕐 History
+        </button>
+        <ul class="dropdown-menu" id="searchHistoryDropdown">
+            <li><a class="dropdown-item" href="#">No history</a></li>
+        </ul>
+    </div>
+    
+    <div class="btn-group" role="group">
+        <button class="btn btn-outline-secondary dropdown-toggle" id="presetsBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Filter presets">
+            📋 Presets
+        </button>
+        <ul class="dropdown-menu" id="presetsDropdown">
+            <li><a class="dropdown-item" href="#">No presets</a></li>
+        </ul>
+    </div>
+    
     <span class="admin-badge">👤 Admin Mode</span>
 </div>
 {% endif %}
