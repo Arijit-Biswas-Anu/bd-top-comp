@@ -5,13 +5,13 @@
 // Store companies for filtering
 let allCompanies = [];
 
-// ===== Utility Functions =====
+// Pagination variables
+let currentPage = 1;
+let totalPages = 1;
+let currentLimit = 50;
+let currentSearch = '';
+let currentSector = '';
 
-/**
- * Get CSRF token from cookie or DOM
- */
-function getCsrfToken() {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
            getCookie('csrftoken');
 }
 
@@ -198,6 +198,11 @@ function displayCompaniesInTable(companies) {
     });
     
     tableBody.innerHTML = html;
+    
+    // Display pagination controls if available
+    if (window.paginationInfo) {
+        displayPaginationControls(window.paginationInfo);
+    }
 }
 
 /**
@@ -213,6 +218,42 @@ function escapeHtml(text) {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+/**
+ * Display pagination controls
+ */
+function displayPaginationControls(pagination) {
+    if (!pagination || pagination.pages <= 1) {
+        document.getElementById('paginationControls').style.display = 'none';
+        return;
+    }
+    
+    const paginationControls = document.getElementById('paginationControls');
+    const pageInfo = document.getElementById('pageInfo');
+    
+    if (paginationControls) {
+        paginationControls.style.display = 'block';
+    }
+    
+    if (pageInfo) {
+        pageInfo.innerHTML = `<span class="page-link">Page ${pagination.page} of ${pagination.pages}</span>`;
+    }
+    
+    // Update global variables
+    currentPage = pagination.page;
+    totalPages = pagination.pages;
+}
+
+/**
+ * Go to a specific page
+ */
+function goToPage(page) {
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    
+    // Reload companies for this page
+    loadCompanies();
 }
 
 /**

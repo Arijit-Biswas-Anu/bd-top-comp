@@ -846,4 +846,86 @@ footer {
     margin-top: 1.5rem;
 }
 
+/* ====== PAGINATION CONTROLS ====== */
+.pagination-controls {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.pagination {
+    margin-bottom: 0;
+    gap: 0.25rem;
+}
+
+.pagination .page-link {
+    border-color: var(--border-color);
+    color: var(--primary-color);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.pagination .page-link:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: var(--light-bg);
+    color: var(--secondary-text);
+    cursor: not-allowed;
+}
+
+/* ====== STATISTICS SECTION ====== */
+.statistics-section {
+    background-color: var(--light-bg);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+    border-left: 4px solid var(--primary-color);
+}
+
+.statistics-section h6 {
+    color: var(--primary-color);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.sector-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.sector-stat-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    background-color: white;
+    border-radius: 0.35rem;
+    border-left: 3px solid var(--primary-color);
+}
+
+.sector-stat-item strong {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+}
+
+.sector-stat-item small {
+    color: var(--secondary-text);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
 

@@ -89,6 +89,19 @@
     </table>
 </div>
 
+<!-- Pagination Controls -->
+<div class="pagination-controls" id="paginationControls" style="display: none;">
+    <nav aria-label="Company listings pagination">
+        <ul class="pagination justify-content-center">
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(1)">First</a></li>
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(Math.max(1, currentPage - 1))">← Previous</a></li>
+            <li class="page-item disabled" id="pageInfo"><span class="page-link">Page 1 of 1</span></li>
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(Math.min(totalPages, currentPage + 1))">Next →</a></li>
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(totalPages)">Last</a></li>
+        </ul>
+    </nav>
+</div>
+
 <!-- No Results Message -->
 <div id="noResultsMessage" class="no-results" style="display: none;">
     <h5>No Companies Found</h5>
