@@ -928,4 +928,261 @@ footer {
     letter-spacing: 0.03em;
 }
 
+/* ====== ANIMATIONS & TRANSITIONS ====== */
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Spinners */
+.spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+/* Smooth transitions */
+table tbody tr {
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+table tbody tr:hover {
+    background-color: #f0f7ff;
+    transform: translateX(2px);
+}
+
+tfoot, thead {
+    transition: all 0.2s ease;
+}
+
+/* Sortable column headers */
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+th.sortable:hover {
+    color: var(--primary-color);
+    background-color: #f8f9fa;
+}
+
+th.sortable.sorted-asc::after {
+    content: ' ↑';
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+th.sortable.sorted-desc::after {
+    content: ' ↓';
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Skeleton Loaders */
+.skeleton {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    background: linear-gradient(
+        90deg,
+        #f0f0f0 25%,
+        #e0e0e0 50%,
+        #f0f0f0 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: calc(200% + 200px) 0; }
+}
+
+.skeleton-text {
+    height: 1rem;
+    background-color: #e0e0e0;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-row {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-cell {
+    flex: 1;
+    height: 2rem;
+    background-color: #e0e0e0;
+    border-radius: 0.25rem;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Loading state overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease;
+}
+
+.loading-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideIn 0.3s ease;
+}
+
+.loading-content .spinner-border {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+/* Modal animations */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+    animation: slideIn 0.3s ease;
+}
+
+/* Badge animations */
+.badge {
+    transition: all 0.2s ease;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}
+
+/* Button animations */
+.btn {
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Alert animations */
+.alert {
+    animation: slideIn 0.3s ease;
+}
+
+/* Fade out effect for removed elements */
+.fade-out {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Detail modal styling */
+.detail-modal-content {
+    padding: 2rem 0;
+}
+
+.detail-field {
+    display: flex;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+.detail-field:hover {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    margin: 0 -1rem;
+}
+
+.detail-label {
+    font-weight: 700;
+    color: var(--primary-color);
+    min-width: 150px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+}
+
+.detail-value {
+    color: var(--text-color);
+    flex: 1;
+    padding-left: 2rem;
+    line-height: 1.6;
+}
+
+.detail-description {
+    font-size: 0.95rem;
+    color: var(--secondary-text);
+    line-height: 1.7;
+    margin-top: 1rem;
+}
+
+/* Company logo in detail modal */
+.detail-logo {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e9ecef;
+    padding: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.detail-logo:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: scale(1.05);
+}
+
+/* Responsive animations - disable on mobile for performance */
+@media (max-width: 768px) {
+    table tbody tr:hover {
+        transform: none;
+    }
+    
+    .btn:hover:not(:disabled) {
+        transform: none;
+    }
+}
+
 

@@ -12,6 +12,20 @@ let currentLimit = 50;
 let currentSearch = '';
 let currentSector = '';
 
+// Sorting variables
+let currentSort = 'name';
+let currentOrder = 'asc';
+
+// Selected company for detail view
+let selectedCompany = null;
+
+// ===== Utility Functions =====
+
+/**
+ * Get CSRF token from cookie or DOM
+ */
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
            getCookie('csrftoken');
 }
 
@@ -67,7 +81,17 @@ async function loadCompanies() {
     if (!tableBody) return;
     
     try {
-        const response = await fetch('/api/companies/');
+        // Build API URL with search, filter, sort, and pagination parameters
+        const params = new URLSearchParams();
+        if (currentSearch) params.append('search', currentSearch);
+        if (currentSector) params.append('sector', currentSector);
+        if (currentSort && currentSort !== 'name') params.append('sort', currentSort);
+        if (currentOrder && currentOrder !== 'asc') params.append('order', currentOrder);
+        if (currentPage) params.append('page', currentPage);
+        if (currentLimit) params.append('limit', currentLimit);
+        
+        const url = `/api/companies/?${params.toString()}`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to load companies');
         
         const data = await response.json();
@@ -113,9 +137,27 @@ async function loadStats() {
             });
         }
         
-        // Display sector statistics if we have a stats container
-        if (data.sectors) {
-            console.log('Sector Stats:', data.sectors);
+        // Display sector statistics on the page
+        if (data.sectors && data.sectors.length > 0) {
+            const statsSection = document.getElementById('statsSection');
+            const statsList = document.getElementById('sectorStatsList');
+            
+            if (statsSection && statsList) {
+                statsSection.style.display = 'block';
+                
+                // Create HTML for sector stats
+                let statsHtml = '';
+                data.sectors.forEach(sector => {
+                    statsHtml += `
+                        <div class="sector-stat-item">
+                            <strong>${sector.count}</strong>
+                            <small>${sector.name}</small>
+                        </div>
+                    `;
+                });
+                
+                statsList.innerHTML = statsHtml;
+            }
         }
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -167,20 +209,20 @@ function displayCompaniesInTable(companies) {
         // Action buttons (admin only)
         const actionButtons = isAdmin ? `
             <div class="btn-group-sm" role="group">
-                <button class="btn btn-sm btn-warning" onclick="handleEditCompany(${company.id})" title="Edit">
+                <button class="btn btn-sm btn-warning" onclick="handleEditCompany(${company.id}); event.stopPropagation();" title="Edit">
                     Edit
                 </button>
-                <button class="btn btn-sm btn-danger" onclick="handleDeleteCompany(${company.id})" title="Delete">
+                <button class="btn btn-sm btn-danger" onclick="handleDeleteCompany(${company.id}); event.stopPropagation();" title="Delete">
                     Delete
                 </button>
             </div>
         ` : '';
         
-        // Table row
+        // Table row - clickable to show detail
         const actionsCol = isAdmin ? `<td class="actions-col">${actionButtons}</td>` : '';
         
         html += `
-            <tr>
+            <tr onclick="showCompanyDetail(${company.id})" style="cursor: pointer;">
                 <td class="rank-col">${index + 1}</td>
                 <td class="logo-col">
                     ${logoHtml}
@@ -203,6 +245,9 @@ function displayCompaniesInTable(companies) {
     if (window.paginationInfo) {
         displayPaginationControls(window.paginationInfo);
     }
+    
+    // Update sort indicators
+    updateSortIndicators();
 }
 
 /**
@@ -484,6 +529,129 @@ function handleLogout() {
             showAlert('Logout error', 'danger');
         });
     }
+}
+
+/**
+ * Handle sorting by column
+ */
+function handleSort(sortField) {
+    // Toggle sort order if clicking the same field
+    if (currentSort === sortField) {
+        currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort = sortField;
+        currentOrder = 'asc';
+    }
+    
+    // Reset to page 1 when sorting changes
+    currentPage = 1;
+    
+    // Update table headers to show sort indicator
+    updateSortIndicators();
+    
+    // Reload companies with new sort
+    loadCompanies();
+}
+
+/**
+ * Update sort indicators on table headers
+ */
+function updateSortIndicators() {
+    // Remove sorted class from all headers
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.classList.remove('sorted-asc', 'sorted-desc');
+    });
+    
+    // Add sorted class to current sort column
+    const fieldMap = {
+        'name': document.querySelector('th.name-col'),
+        'sector': document.querySelector('th.sector-col'),
+        'founded': document.querySelector('th.founded-col')
+    };
+    
+    if (fieldMap[currentSort]) {
+        fieldMap[currentSort].classList.add(`sorted-${currentOrder}`);
+    }
+}
+
+/**
+ * Show company detail modal
+ */
+function showCompanyDetail(id) {
+    const company = allCompanies.find(c => c.id === id);
+    if (!company) return;
+    
+    selectedCompany = company;
+    
+    // Populate modal with data
+    document.getElementById('detailLogo').src = company.logo_url || '';
+    document.getElementById('detailName').textContent = company.name;
+    document.getElementById('detailSector').textContent = company.sector;
+    document.getElementById('detailHQ').textContent = company.headquarters;
+    document.getElementById('detailFounded').textContent = company.founded;
+    document.getElementById('detailDescription').textContent = company.description || 'No description available';
+    
+    // Format dates
+    const createdDate = new Date(company.created_at).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    document.getElementById('detailCreated').textContent = createdDate;
+    
+    // Show updated field only if created and updated are different
+    const updatedField = document.getElementById('updatedField');
+    if (company.created_at !== company.updated_at) {
+        updatedField.style.display = 'flex';
+        const updatedDate = new Date(company.updated_at).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        document.getElementById('detailUpdated').textContent = updatedDate;
+    } else {
+        updatedField.style.display = 'none';
+    }
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+    modal.show();
+}
+
+/**
+ * Edit company from detail modal
+ */
+function editCompanyFromDetail() {
+    if (!selectedCompany) return;
+    
+    // Close detail modal
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
+    detailModal?.hide();
+    
+    // Open edit modal
+    setTimeout(() => {
+        handleEditCompany(selectedCompany.id);
+    }, 300);
+}
+
+/**
+ * Delete company from detail modal
+ */
+function deleteCompanyFromDetail() {
+    if (!selectedCompany) return;
+    
+    // Close detail modal
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
+    detailModal?.hide();
+    
+    // Delete company
+    setTimeout(() => {
+        handleDeleteCompany(selectedCompany.id);
+    }, 300);
 }
 
 // Initialize everything when DOM is loaded
