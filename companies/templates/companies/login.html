@@ -1,70 +1,76 @@
 {% extends 'companies/base.html' %}
 
-{% block title %}Admin Login{% endblock %}
+{% block title %}Admin Login - Bangladesh Companies Directory{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="card shadow-lg mt-5">
-            <div class="card-body p-5">
-                <!-- Header -->
-                <h2 class="text-center mb-4">🔐 Admin Login</h2>
-                <p class="text-center text-muted mb-4">
-                    Enter your credentials to access admin panel
-                </p>
+<div style="display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 200px);">
+    <div style="width: 100%; max-width: 420px;">
+        <!-- Login Card -->
+        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);">
+            <!-- Card Header -->
+           <div class="modal-header" style="border-bottom: 1px solid var(--border-light);">
+                <div>
+                    <h4 class="modal-title mb-1">Admin Login</h4>
+                    <small class="text-muted">Access the administration panel</small>
+                </div>
+            </div>
 
-                <!-- Error Message (if any) -->
-                <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+            <!-- Card Body -->
+            <div class="modal-body">
+                <!-- Error Message -->
+                <div id="errorMessage" class="alert alert-danger" style="display: none; margin-bottom: 1.5rem;"></div>
 
                 <!-- Login Form -->
                 <form id="loginForm">
                     {% csrf_token %}
 
-                    <!-- Username -->
+                    <!-- Username Field -->
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
                         <input 
                             type="text" 
-                            class="form-control form-control-lg" 
+                            class="form-control" 
                             id="username" 
-                            placeholder="Enter username"
+                            placeholder="Enter your username"
                             required
                             autofocus
                         >
                     </div>
 
-                    <!-- Password -->
-                    <div class="mb-4">
+                    <!-- Password Field -->
+                    <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
                         <input 
                             type="password" 
-                            class="form-control form-control-lg" 
+                            class="form-control" 
                             id="password" 
-                            placeholder="Enter password"
+                            placeholder="Enter your password"
                             required
                         >
                     </div>
 
                     <!-- Submit Button -->
-                    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
-                        Login
+                    <button type="submit" class="btn btn-primary w-100" style="padding: 0.875rem; font-size: 1rem; font-weight: 600;">
+                        Sign In
                     </button>
                 </form>
 
-                <!-- Info Box -->
-                <div class="card bg-light border-0">
-                    <div class="card-body p-3">
-                        <small class="text-muted">
-                            <strong>Demo Credentials:</strong><br>
-                            Username: <code>admin</code><br>
-                            Password: <code>admin123</code>
-                        </small>
-                    </div>
+                <!-- Demo Credentials Box -->
+                <div style="background-color: var(--accent-light); border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; margin-top: 1.5rem;">
+                    <small>
+                        <strong>Demo Credentials:</strong><br>
+                        <code style="background-color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.9rem;">
+                            Username: admin
+                        </code><br>
+                        <code style="background-color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.9rem;">
+                            Password: admin123
+                        </code>
+                    </small>
                 </div>
 
-                <!-- Back to Home Link -->
-                <div class="text-center mt-3">
-                    <a href="/" class="text-muted">← Back to Companies</a>
+                <!-- Back Link -->
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <a href="/" style="color: var(--accent-blue); text-decoration: none; font-weight: 500;">← Back to Directory</a>
                 </div>
             </div>
         </div>
@@ -99,8 +105,10 @@
         .then(data => {
             if (data.success) {
                 // Login successful - redirect to homepage
-                alert('Login successful!');
-                window.location.href = '/';
+                showAlert('Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
             } else {
                 // Show error message
                 const errorDiv = document.getElementById('errorMessage');

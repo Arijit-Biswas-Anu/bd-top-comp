@@ -87,54 +87,70 @@ async function loadCompanies() {
 function displayCompaniesInTable(companies) {
     const tableBody = document.getElementById('companiesTableBody');
     const noResultsMessage = document.getElementById('noResultsMessage');
+    const resultsInfo = document.getElementById('resultsInfo');
     const resultsCount = document.getElementById('resultsCount');
-    const isAdmin = document.querySelector('nav .nav-link[href="/dashboard/"]') !== null;
+    const totalCount = document.getElementById('totalCount');
+    
+    // Detect if user is admin by checking for edit/delete buttons capability
+    const adminBtn = document.getElementById('addCompanyBtn');
+    const isAdmin = adminBtn !== null;
     
     if (!tableBody) return;
     
     if (companies.length === 0) {
         tableBody.innerHTML = '';
         noResultsMessage.style.display = 'block';
-        resultsCount.textContent = '0';
+        if (resultsInfo) resultsInfo.style.display = 'none';
         return;
     }
     
     noResultsMessage.style.display = 'none';
-    resultsCount.textContent = companies.length;
+    if (resultsInfo) {
+        resultsInfo.style.display = 'block';
+        resultsCount.textContent = companies.length;
+        totalCount.textContent = allCompanies.length;
+    }
     
     let html = '';
     
     companies.forEach((company, index) => {
         // Logo HTML
         const logoHtml = company.logo_url 
-            ? `<img src="${company.logo_url}" alt="${escapeHtml(company.name)}" class="company-logo">`
-            : `<div class="logo-placeholder">No Logo</div>`;
+            ? `<img src="${company.logo_url}" alt="${escapeHtml(company.name)}" class="company-logo" onerror="this.style.display='none'; this.nextElementSibling?.style.display='flex';">`
+            : '';
+        
+        const logoPlaceholder = !company.logo_url 
+            ? `<div class="logo-placeholder" style="display: flex;">Logo</div>`
+            : `<div class="logo-placeholder" style="display: none;">Logo</div>`;
         
         // Action buttons (admin only)
         const actionButtons = isAdmin ? `
-            <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-warning btn-sm" onclick="handleEditCompany(${company.id})" title="Edit">
-                    ✏️ Edit
+            <div class="btn-group-sm" role="group">
+                <button class="btn btn-sm btn-warning" onclick="handleEditCompany(${company.id})" title="Edit">
+                    Edit
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="handleDeleteCompany(${company.id})" title="Delete">
-                    🗑️ Delete
+                <button class="btn btn-sm btn-danger" onclick="handleDeleteCompany(${company.id})" title="Delete">
+                    Delete
                 </button>
             </div>
         ` : '';
         
         // Table row
-        const actionsCol = isAdmin ? `<td class="actions-col text-center">${actionButtons}</td>` : '';
+        const actionsCol = isAdmin ? `<td class="actions-col">${actionButtons}</td>` : '';
         
         html += `
             <tr>
-                <td class="rank-col text-center fw-bold">${index + 1}</td>
-                <td class="logo-col text-center">${logoHtml}</td>
+                <td class="rank-col">${index + 1}</td>
+                <td class="logo-col">
+                    ${logoHtml}
+                    ${logoPlaceholder}
+                </td>
                 <td class="name-col">${escapeHtml(company.name)}</td>
                 <td class="sector-col">
                     <span class="sector-badge">${escapeHtml(company.sector)}</span>
                 </td>
                 <td class="hq-col">${escapeHtml(company.headquarters)}</td>
-                <td class="founded-col text-center">${company.founded}</td>
+                <td class="founded-col">${company.founded}</td>
                 ${actionsCol}
             </tr>
         `;
@@ -235,7 +251,7 @@ function initAddCompany() {
  */
 function showAddModal() {
     clearCompanyForm();
-    document.getElementById('companyModalTitle').textContent = '➕ Add New Company';
+    document.getElementById('companyModalTitle').textContent = 'Add New Company';
     document.getElementById('companyId').value = '';
     document.getElementById('submitCompanyBtn').textContent = 'Save Company';
     
@@ -262,13 +278,13 @@ function handleEditCompany(id) {
     document.getElementById('companyId').value = company.id;
     document.getElementById('companyName').value = company.name;
     document.getElementById('companySector').value = company.sector;
-    document.getElementById('companyLogoUrl').value = company.logo_url;
+    document.getElementById('companyLogoUrl').value = company.logo_url || '';
     document.getElementById('companyHeadquarters').value = company.headquarters;
     document.getElementById('companyFounded').value = company.founded;
-    document.getElementById('companyDescription').value = company.description;
+    document.getElementById('companyDescription').value = company.description || '';
     
     // Update modal title
-    document.getElementById('companyModalTitle').textContent = '✏️ Edit Company';
+    document.getElementById('companyModalTitle').textContent = 'Edit Company';
     document.getElementById('submitCompanyBtn').textContent = 'Update Company';
     
     // Show modal
