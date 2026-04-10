@@ -4,53 +4,97 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-lg-10 mx-auto">
-        <!-- Page Title -->
-        <h1 class="mb-4 text-center">
-            <span class="badge bg-primary p-3">🏢 Top Bangladeshi Companies</span>
-        </h1>
+    <div class="col-12">
+        <!-- Page Header -->
+        <div class="page-header mb-4">
+            <h1 class="display-5 fw-bold mb-2">🇧🇩 Top Bangladeshi Companies</h1>
+            <p class="text-muted lead">Real-time rankings of Bangladesh's most prominent business organizations</p>
+        </div>
 
-        <!-- Search Section -->
-        <div class="card mb-4 shadow-sm">
+        <!-- Search & Filter Section -->
+        <div class="card shadow-sm mb-4 border-0">
             <div class="card-body">
-                <div class="input-group input-group-lg">
-                    <input 
-                        type="text" 
-                        class="form-control" 
-                        id="searchInput" 
-                        placeholder="Search by company name or sector..."
-                        aria-label="Search companies"
-                    >
-                    <button class="btn btn-primary" type="button" id="clearSearchBtn">
-                        Clear
-                    </button>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="searchInput" class="form-label fw-bold">🔍 Search Companies</label>
+                        <input 
+                            type="text" 
+                            class="form-control form-control-lg" 
+                            id="searchInput" 
+                            placeholder="Search by name or sector..."
+                            aria-label="Search companies"
+                        >
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sectorFilter" class="form-label fw-bold">📊 Filter by Sector</label>
+                        <select class="form-select form-select-lg" id="sectorFilter">
+                            <option value="">All Sectors</option>
+                            <option value="Telecom">Telecommunications</option>
+                            <option value="Banking">Banking & Finance</option>
+                            <option value="Pharmaceuticals">Pharmaceuticals</option>
+                            <option value="Energy">Energy</option>
+                            <option value="Retail">Retail & Commerce</option>
+                            <option value="Manufacturing">Manufacturing</option>
+                            <option value="Technology">Technology</option>
+                            <option value="Textiles">Textiles</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
                 </div>
-                <small class="text-muted d-block mt-2">
-                    💡 Search updates in real-time as you type
-                </small>
+                <small class="text-muted d-block mt-2">💡 Results update instantly as you search</small>
             </div>
         </div>
 
-        <!-- Admin Add Company Button -->
+        <!-- Admin Button -->
         {% if user.is_authenticated %}
-            <div class="mb-4 text-center">
+            <div class="mb-4 d-flex justify-content-between align-items-center">
                 <button class="btn btn-success btn-lg" id="addCompanyBtn">
                     ✚ Add New Company
                 </button>
+                <span class="badge bg-primary p-2 fs-6">Admin Mode</span>
             </div>
         {% endif %}
 
-        <!-- Companies List/Table -->
-        <div id="companiesContainer" class="mb-4">
-            <div class="spinner-border text-primary m-5" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+        <!-- Companies Table -->
+        <div class="table-responsive shadow-sm border rounded">
+            <table class="table table-hover mb-0" id="companiesTable">
+                <thead class="table-header-sticky">
+                    <tr>
+                        <th class="rank-col">Rank</th>
+                        <th class="logo-col">Logo</th>
+                        <th class="name-col">Company Name</th>
+                        <th class="sector-col">Sector</th>
+                        <th class="hq-col">Headquarters</th>
+                        <th class="founded-col">Founded</th>
+                        {% if user.is_authenticated %}
+                            <th class="actions-col">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="companiesTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-3">Loading companies...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- No Results Message -->
-        <div id="noResultsMessage" class="alert alert-info text-center" style="display: none;">
-            <h5>No companies found</h5>
-            <p>Try adjusting your search terms</p>
+        <div id="noResultsMessage" class="alert alert-info text-center py-5" style="display: none;">
+            <h5 class="mb-2">📭 No companies found</h5>
+            <p class="mb-0">Try adjusting your search or filter criteria</p>
+        </div>
+
+        <!-- Results Count -->
+        <div class="mt-3">
+            <small class="text-muted">
+                Showing <strong id="resultsCount">0</strong> companies
+            </small>
         </div>
     </div>
 </div>
@@ -59,8 +103,8 @@
 <div class="modal fade" id="companyModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="companyModalTitle">Add New Company</h5>
+            <div class="modal-header bg-light border-bottom">
+                <h5 class="modal-title fw-bold" id="companyModalTitle">➕ Add New Company</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -68,49 +112,53 @@
                     {% csrf_token %}
                     <input type="hidden" id="companyId">
 
-                    <div class="mb-3">
-                        <label for="companyName" class="form-label">Company Name *</label>
-                        <input type="text" class="form-control" id="companyName" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="companyName" class="form-label fw-bold">Company Name *</label>
+                            <input type="text" class="form-control" id="companyName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="companySector" class="form-label fw-bold">Sector *</label>
+                            <select class="form-select" id="companySector" required>
+                                <option value="">-- Select Sector --</option>
+                                <option value="Telecom">Telecommunications</option>
+                                <option value="Banking">Banking & Finance</option>
+                                <option value="Pharmaceuticals">Pharmaceuticals</option>
+                                <option value="Energy">Energy</option>
+                                <option value="Retail">Retail & Commerce</option>
+                                <option value="Manufacturing">Manufacturing</option>
+                                <option value="Technology">Technology</option>
+                                <option value="Textiles">Textiles</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="companySector" class="form-label">Sector *</label>
-                        <select class="form-select" id="companySector" required>
-                            <option value="">-- Select Sector --</option>
-                            <option value="Telecom">Telecommunication</option>
-                            <option value="Banking">Banking & Finance</option>
-                            <option value="Energy">Energy</option>
-                            <option value="Retail">Retail & Commerce</option>
-                            <option value="Manufacturing">Manufacturing</option>
-                            <option value="Pharmaceutical">Pharmaceutical</option>
-                            <option value="Technology">Technology</option>
-                            <option value="Textiles">Textiles</option>
-                            <option value="Other">Other</option>
-                        </select>
+                        <label for="companyLogoUrl" class="form-label fw-bold">Logo URL</label>
+                        <input type="url" class="form-control" id="companyLogoUrl" placeholder="https://example.com/logo.png">
+                        <small class="text-muted">Leave blank for no logo</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="companyHeadquarters" class="form-label fw-bold">Headquarters *</label>
+                            <input type="text" class="form-control" id="companyHeadquarters" placeholder="e.g., Dhaka, Bangladesh" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="companyFounded" class="form-label fw-bold">Founded Year *</label>
+                            <input type="number" class="form-control" id="companyFounded" min="1900" max="2026" required>
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="companyLogoUrl" class="form-label">Logo URL</label>
-                        <input type="url" class="form-control" id="companyLogoUrl">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="companyHeadquarters" class="form-label">Headquarters *</label>
-                        <input type="text" class="form-control" id="companyHeadquarters" placeholder="e.g., Dhaka, Bangladesh" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="companyFounded" class="form-label">Founded Year *</label>
-                        <input type="number" class="form-control" id="companyFounded" min="1900" max="2026" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="companyDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="companyDescription" rows="3" placeholder="Brief description of the company"></textarea>
+                        <label for="companyDescription" class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" id="companyDescription" rows="3" placeholder="Brief overview of the company (max 500 chars)"></textarea>
+                        <small class="text-muted">Optional</small>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer border-top">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="submitCompanyBtn">Save Company</button>
             </div>
@@ -126,6 +174,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadCompanies();
         initSearch();
+        initSectorFilter();
         initAddCompany();
     });
 </script>

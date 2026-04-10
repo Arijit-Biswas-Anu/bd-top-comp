@@ -2,6 +2,9 @@
    Top Bangladeshi Companies - Main AJAX Script
    ==================================== */
 
+// Store companies for filtering
+let allCompanies = [];
+
 // ===== Utility Functions =====
 
 /**
@@ -56,100 +59,88 @@ function showAlert(message, type = 'success') {
 // ===== Company List & Search Functions =====
 
 /**
- * Load companies from API (with optional search)
+ * Load companies from API
  */
-async function loadCompanies(searchTerm = '') {
-    const companiesContainer = document.getElementById('companiesContainer');
+async function loadCompanies() {
+    const tableBody = document.getElementById('companiesTableBody');
     const noResultsMessage = document.getElementById('noResultsMessage');
     
-    if (!companiesContainer) return;
+    if (!tableBody) return;
     
     try {
-        let url = '/api/companies/';
-        if (searchTerm) {
-            url += '?search=' + encodeURIComponent(searchTerm);
-        }
-        
-        const response = await fetch(url);
+        const response = await fetch('/api/companies/');
         if (!response.ok) throw new Error('Failed to load companies');
         
         const data = await response.json();
-        const companies = data.companies || [];
+        allCompanies = data.companies || [];
         
-        if (companies.length === 0) {
-            companiesContainer.innerHTML = '';
-            noResultsMessage.style.display = 'block';
-            return;
-        }
-        
-        noResultsMessage.style.display = 'none';
-        displayCompanies(companies);
+        displayCompaniesInTable(allCompanies);
     } catch (error) {
         console.error('Error:', error);
-        companiesContainer.innerHTML = '<div class="alert alert-danger">Error loading companies</div>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading companies</td></tr>';
     }
 }
 
 /**
- * Display companies in DOM
+ * Display companies in table format
  */
-function displayCompanies(companies) {
-    const container = document.getElementById('companiesContainer');
+function displayCompaniesInTable(companies) {
+    const tableBody = document.getElementById('companiesTableBody');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const resultsCount = document.getElementById('resultsCount');
     const isAdmin = document.querySelector('nav .nav-link[href="/dashboard/"]') !== null;
     
-    let html = '<div class="row">';
+    if (!tableBody) return;
     
-    companies.forEach(company => {
-        const logoHtml = company.logo_url ? 
-            `<img src="${company.logo_url}" alt="${company.name}" class="company-logo me-3">` : 
-            `<div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-right: 1rem; color: #666; font-weight: bold;">NO LOGO</div>`;
+    if (companies.length === 0) {
+        tableBody.innerHTML = '';
+        noResultsMessage.style.display = 'block';
+        resultsCount.textContent = '0';
+        return;
+    }
+    
+    noResultsMessage.style.display = 'none';
+    resultsCount.textContent = companies.length;
+    
+    let html = '';
+    
+    companies.forEach((company, index) => {
+        // Logo HTML
+        const logoHtml = company.logo_url 
+            ? `<img src="${company.logo_url}" alt="${escapeHtml(company.name)}" class="company-logo">`
+            : `<div class="logo-placeholder">No Logo</div>`;
         
+        // Action buttons (admin only)
         const actionButtons = isAdmin ? `
             <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-warning" onclick="handleEditCompany(${company.id})">
+                <button class="btn btn-warning btn-sm" onclick="handleEditCompany(${company.id})" title="Edit">
                     ✏️ Edit
                 </button>
-                <button class="btn btn-danger" onclick="handleDeleteCompany(${company.id})">
+                <button class="btn btn-danger btn-sm" onclick="handleDeleteCompany(${company.id})" title="Delete">
                     🗑️ Delete
                 </button>
             </div>
         ` : '';
         
+        // Table row
+        const actionsCol = isAdmin ? `<td class="actions-col text-center">${actionButtons}</td>` : '';
+        
         html += `
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card company-card h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-start mb-3">
-                            ${logoHtml}
-                            <div>
-                                <h5 class="company-name mb-1">${escapeHtml(company.name)}</h5>
-                                <span class="company-sector">${escapeHtml(company.sector)}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="company-info">
-                            <p class="mb-2">
-                                <span class="company-info-label">📍 HQ:</span> ${escapeHtml(company.headquarters)}
-                            </p>
-                            <p class="mb-3">
-                                <span class="company-info-label">📅 Founded:</span> ${company.founded}
-                            </p>
-                            ${company.description ? `
-                                <p class="mb-3 text-muted">
-                                    <small>${escapeHtml(company.description).substring(0, 100)}...</small>
-                                </p>
-                            ` : ''}
-                        </div>
-                        
-                        ${actionButtons}
-                    </div>
-                </div>
-            </div>
+            <tr>
+                <td class="rank-col text-center fw-bold">${index + 1}</td>
+                <td class="logo-col text-center">${logoHtml}</td>
+                <td class="name-col">${escapeHtml(company.name)}</td>
+                <td class="sector-col">
+                    <span class="sector-badge">${escapeHtml(company.sector)}</span>
+                </td>
+                <td class="hq-col">${escapeHtml(company.headquarters)}</td>
+                <td class="founded-col text-center">${company.founded}</td>
+                ${actionsCol}
+            </tr>
         `;
     });
     
-    html += '</div>';
-    container.innerHTML = html;
+    tableBody.innerHTML = html;
 }
 
 /**
@@ -168,28 +159,61 @@ function escapeHtml(text) {
 }
 
 /**
+ * Filter and display companies based on search and sector
+ */
+function filterAndDisplayCompanies() {
+    const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+    const sectorFilter = document.getElementById('sectorFilter')?.value || '';
+    
+    let filtered = allCompanies;
+    
+    // Filter by search term
+    if (searchTerm) {
+        filtered = filtered.filter(company =>
+            company.name.toLowerCase().includes(searchTerm) ||
+            company.sector.toLowerCase().includes(searchTerm) ||
+            company.headquarters.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    // Filter by sector
+    if (sectorFilter) {
+        filtered = filtered.filter(company =>
+            company.sector.toLowerCase() === sectorFilter.toLowerCase()
+        );
+    }
+    
+    displayCompaniesInTable(filtered);
+}
+
+/**
  * Initialize search functionality
  */
 function initSearch() {
     const searchInput = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearSearchBtn');
     
     if (!searchInput) return;
     
-    // Search on input with debouncing
+    // Search with debouncing
     let searchTimeout;
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-            loadCompanies(this.value);
+            filterAndDisplayCompanies();
         }, 300);
     });
+}
+
+/**
+ * Initialize sector filter
+ */
+function initSectorFilter() {
+    const sectorFilter = document.getElementById('sectorFilter');
     
-    // Clear search
-    clearBtn?.addEventListener('click', function() {
-        searchInput.value = '';
-        loadCompanies();
-        searchInput.focus();
+    if (!sectorFilter) return;
+    
+    sectorFilter.addEventListener('change', function() {
+        filterAndDisplayCompanies();
     });
 }
 
@@ -231,8 +255,25 @@ function clearCompanyForm() {
  * Handle edit company
  */
 function handleEditCompany(id) {
-    // Placeholder - will be implemented in next phase
-    console.log('Edit company:', id);
+    const company = allCompanies.find(c => c.id === id);
+    if (!company) return;
+    
+    // Populate form with company data
+    document.getElementById('companyId').value = company.id;
+    document.getElementById('companyName').value = company.name;
+    document.getElementById('companySector').value = company.sector;
+    document.getElementById('companyLogoUrl').value = company.logo_url;
+    document.getElementById('companyHeadquarters').value = company.headquarters;
+    document.getElementById('companyFounded').value = company.founded;
+    document.getElementById('companyDescription').value = company.description;
+    
+    // Update modal title
+    document.getElementById('companyModalTitle').textContent = '✏️ Edit Company';
+    document.getElementById('submitCompanyBtn').textContent = 'Update Company';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('companyModal'));
+    modal.show();
 }
 
 /**
@@ -296,7 +337,7 @@ async function handleSaveCompany() {
  * Handle delete company
  */
 async function handleDeleteCompany(id) {
-    if (!confirm('Are you sure you want to delete this company?')) {
+    if (!confirm('Are you sure you want to delete this company? This action cannot be undone.')) {
         return;
     }
     
@@ -351,3 +392,4 @@ function handleLogout() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initialized');
 });
+
