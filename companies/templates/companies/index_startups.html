@@ -436,10 +436,13 @@
 <script>
     // Initialize page when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initializing EdTech Startups page...');
         loadStartups();
+        loadStats();
         initSearch();
         initSectorFilter();
         initAddStartup();
+        console.log('EdTech Startups page initialized!');
     });
 </script>
 {% endblock %}
