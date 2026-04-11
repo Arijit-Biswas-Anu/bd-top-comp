@@ -114,7 +114,7 @@ async function loadStartups() {
  */
 async function loadStats() {
     try {
-        const response = await fetch('/api/stats/');
+        const response = await fetch('/api/startups/stats/');
         if (!response.ok) throw new Error('Failed to load stats');
         
         const data = await response.json();
@@ -339,13 +339,11 @@ function initSearch() {
     
     if (!searchInput) return;
     
-    // Search with debouncing
-    let searchTimeout;
+    // Real-time search
     searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            filterAndDisplayCompanies();
-        }, 300);
+        currentSearch = this.value.trim();
+        currentPage = 1;
+        loadStartups();
     });
 }
 
@@ -358,7 +356,9 @@ function initSectorFilter() {
     if (!sectorFilter) return;
     
     sectorFilter.addEventListener('change', function() {
-        filterAndDisplayCompanies();
+        currentSector = this.value.trim();
+        currentPage = 1;
+        loadStartups();
     });
 }
 
@@ -817,16 +817,16 @@ function exportToCSV() {
     if (currentOrder) params.append('order', currentOrder);
     
     // Trigger download
-    window.location.href = `/api/export/csv/?${params.toString()}`;
+    window.location.href = `/api/startups/export/csv/?${params.toString()}`;
     
-    showAlert('Companies exported to CSV! 📥', 'success');
+    showAlert('Startups exported to CSV! 📥', 'success');
 }
 
 /**
  * Export summary report
  */
 function exportSummary() {
-    window.location.href = '/api/export/summary/';
+    window.location.href = '/api/startups/export/summary/';
     showAlert('Summary report exported! 📊', 'success');
 }
 
