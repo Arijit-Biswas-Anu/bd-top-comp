@@ -8,14 +8,14 @@ import json
 import csv
 from django.db.models import Q, Count
 
-from .models import Company
+from .models import Company, Startup
 
 
 # ===== Page Views =====
 
 def index(request):
-    """Display company listing page"""
-    return render(request, 'companies/index.html')
+    """Display EdTech startups listing page"""
+    return render(request, 'companies/index_startups.html')
 
 
 @csrf_exempt
@@ -702,5 +702,374 @@ def api_descriptive_stats(request):
         return JsonResponse({
             'success': False,
             'message': f'Error calculating statistics: {str(e)}'
+        }, status=400)
+
+
+# ===== STARTUP ENDPOINTS (EdTech Startups) =====
+
+@require_http_methods(["GET"])
+def api_get_startup_stats(request):
+    """Get statistics about EdTech startups"""
+    # Total startups
+    total_startups = Startup.objects.count()
+    
+    # Startups by sector
+    sector_stats = Startup.objects.values('sector').annotate(count=Count('sector')).order_by('-count')
+    
+    # Get all sectors for filter dropdown
+    all_sectors = Startup.objects.values_list('sector', flat=True).distinct().order_by('sector')
+    
+    return JsonResponse({
+        'total_startups': total_startups,
+        'sectors': [
+            {'name': stat['sector'], 'count': stat['count']} 
+            for stat in sector_stats
+        ],
+        'all_sectors': list(all_sectors),
+    })
+
+
+@require_http_methods(["GET"])
+def api_get_startups(request):
+    """Get all startups with optional search, filtering, and pagination"""
+    search_term = request.GET.get('search', '').strip()
+    sector = request.GET.get('sector', '').strip()
+    sort_by = request.GET.get('sort', 'name').strip()  # name, year_founded, sector
+    sort_order = request.GET.get('order', 'asc').strip()  # asc or desc
+    page = int(request.GET.get('page', '1'))
+    limit = int(request.GET.get('limit', '50'))
+    
+    # Start with all startups
+    startups = Startup.objects.all()
+    
+    # Apply search filter
+    if search_term:
+        startups = startups.filter(
+            Q(name__icontains=search_term) | 
+            Q(sector__icontains=search_term) |
+            Q(founders__icontains=search_term) |
+            Q(headquarters__icontains=search_term)
+        )
+    
+    # Apply sector filter (handle multi-sector entries with "contains")
+    if sector:
+        startups = startups.filter(sector__icontains=sector)
+    
+    # Count total before pagination
+    total_count = startups.count()
+    
+    # Apply sorting
+    if sort_by == 'year_founded':
+        startups = startups.order_by(f'{"-" if sort_order == "desc" else ""}year_founded')
+    elif sort_by == 'sector':
+        startups = startups.order_by(f'{"-" if sort_order == "desc" else ""}sector')
+    else:  # default: name
+        startups = startups.order_by(f'{"-" if sort_order == "desc" else ""}name')
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    paginated = startups[offset:offset + limit]
+    
+    startups_data = [
+        {
+            'id': s.id,
+            'name': s.name,
+            'sector': s.sector,
+            'founders': s.founders,
+            'logo_url': s.logo_url or '',
+            'headquarters': s.headquarters,
+            'year_founded': s.year_founded,
+            'total_funding': s.total_funding or '',
+        }
+        for s in paginated
+    ]
+    
+    return JsonResponse({
+        'startups': startups_data,
+        'pagination': {
+            'page': page,
+            'limit': limit,
+            'total': total_count,
+            'pages': (total_count + limit - 1) // limit  # ceiling division
+        }
+    })
+
+
+@csrf_exempt
+@login_required(login_url='/login/')
+def api_add_startup(request):
+    """Add new startup (admin only)"""
+    try:
+        data = json.loads(request.body)
+        
+        # Validate required fields
+        required_fields = ['name', 'sector', 'founders', 'headquarters', 'year_founded']
+        for field in required_fields:
+            if field not in data or not str(data.get(field, '')).strip():
+                return JsonResponse({
+                    'success': False,
+                    'message': f'{field.capitalize()} is required'
+                }, status=400)
+        
+        # Check if startup already exists
+        if Startup.objects.filter(name=data['name']).exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'Startup with this name already exists'
+            }, status=400)
+        
+        # Create startup
+        startup = Startup.objects.create(
+            name=data['name'].strip(),
+            sector=data['sector'].strip(),
+            founders=data['founders'].strip(),
+            logo_url=data.get('logo_url', '').strip() or None,
+            headquarters=data['headquarters'].strip(),
+            year_founded=int(data['year_founded']),
+            total_funding=data.get('total_funding', '').strip()
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Startup added successfully!',
+            'startup': {
+                'id': startup.id,
+                'name': startup.name,
+                'sector': startup.sector,
+                'founders': startup.founders,
+                'logo_url': startup.logo_url or '',
+                'headquarters': startup.headquarters,
+                'year_founded': startup.year_founded,
+                'total_funding': startup.total_funding or '',
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid JSON'
+        }, status=400)
+    except ValueError as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Invalid data: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=400)
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+@login_required(login_url='/login/')
+def api_edit_startup(request, id):
+    """Edit existing startup (admin only)"""
+    try:
+        startup = get_object_or_404(Startup, id=id)
+        data = json.loads(request.body)
+        
+        # Update fields if provided
+        if 'name' in data and data['name']:
+            # Check if new name is unique (excluding current startup)
+            if Startup.objects.filter(name=data['name']).exclude(id=id).exists():
+                return JsonResponse({
+                    'success': False,
+                    'message': 'A startup with this name already exists'
+                }, status=400)
+            startup.name = data['name'].strip()
+        
+        if 'sector' in data and data['sector']:
+            startup.sector = data['sector'].strip()
+        
+        if 'founders' in data and data['founders']:
+            startup.founders = data['founders'].strip()
+        
+        if 'logo_url' in data:
+            startup.logo_url = data.get('logo_url', '').strip() or None
+        
+        if 'headquarters' in data and data['headquarters']:
+            startup.headquarters = data['headquarters'].strip()
+        
+        if 'year_founded' in data and data['year_founded']:
+            startup.year_founded = int(data['year_founded'])
+        
+        if 'total_funding' in data:
+            startup.total_funding = data.get('total_funding', '').strip()
+        
+        startup.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Startup updated successfully!',
+            'startup': {
+                'id': startup.id,
+                'name': startup.name,
+                'sector': startup.sector,
+                'founders': startup.founders,
+                'logo_url': startup.logo_url or '',
+                'headquarters': startup.headquarters,
+                'year_founded': startup.year_founded,
+                'total_funding': startup.total_funding or '',
+            }
+        })
+    except Startup.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Startup not found'
+        }, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid JSON'
+        }, status=400)
+    except ValueError as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Invalid data: {str(e)}'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=400)
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+@login_required(login_url='/login/')
+def api_delete_startup(request, id):
+    """Delete startup (admin only)"""
+    try:
+        startup = get_object_or_404(Startup, id=id)
+        startup_name = startup.name
+        startup.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Startup "{startup_name}" deleted successfully!'
+        })
+    except Startup.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Startup not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+@login_required(login_url='/login/')
+def api_export_startups_csv(request):
+    """Export startups to CSV based on current filters"""
+    try:
+        # Get filter parameters from query string
+        search_term = request.GET.get('search', '').strip()
+        sector = request.GET.get('sector', '').strip()
+        sort_by = request.GET.get('sort', 'name').strip()
+        sort_order = request.GET.get('order', 'asc').strip()
+        
+        # Start with all startups
+        startups = Startup.objects.all()
+        
+        # Apply search filter
+        if search_term:
+            startups = startups.filter(
+                Q(name__icontains=search_term) | 
+                Q(sector__icontains=search_term) |
+                Q(founders__icontains=search_term) |
+                Q(headquarters__icontains=search_term)
+            )
+        
+        # Apply sector filter
+        if sector:
+            startups = startups.filter(sector__icontains=sector)
+        
+        # Apply sorting
+        if sort_by == 'year_founded':
+            startups = startups.order_by(f'{"-" if sort_order == "desc" else ""}year_founded')
+        elif sort_by == 'sector':
+            startups = startups.order_by(f'{"-" if sort_order == "desc" else ""}sector')
+        else:
+            startups = startups.order_by(f'{"-" if sort_order == "desc" else ""}name')
+        
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="edtech_startups.csv"'
+        
+        # Create CSV writer
+        writer = csv.writer(response)
+        
+        # Write header row
+        writer.writerow([
+            'Startup Name',
+            'Sector',
+            'Founders',
+            'Headquarters',
+            'Founded Year',
+            'Total Funding',
+            'Added On',
+            'Last Updated'
+        ])
+        
+        # Write data rows
+        for startup in startups:
+            writer.writerow([
+                startup.name,
+                startup.sector,
+                startup.founders,
+                startup.headquarters,
+                startup.year_founded,
+                startup.total_funding or '',
+                startup.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                startup.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+            ])
+        
+        return response
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error exporting CSV: {str(e)}'
+        }, status=400)
+
+
+@require_http_methods(["GET"])
+def api_startups_summary(request):
+    """Export EdTech startups summary"""
+    try:
+        total_startups = Startup.objects.count()
+        sector_stats = Startup.objects.values('sector').annotate(count=Count('sector')).order_by('-count')
+        
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="edtech_startups_summary.csv"'
+        
+        writer = csv.writer(response)
+        
+        # Summary header
+        writer.writerow(['Bangladesh EdTech Startups - Summary Report'])
+        writer.writerow(['Generated on', __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+        writer.writerow([])
+        
+        # Overall statistics
+        writer.writerow(['OVERALL STATISTICS'])
+        writer.writerow(['Total Startups', total_startups])
+        writer.writerow(['Total Sectors', sector_stats.count()])
+        writer.writerow([])
+        
+        # Sector breakdown
+        writer.writerow(['SECTOR BREAKDOWN'])
+        writer.writerow(['Sector', 'Count'])
+        for sector in sector_stats:
+            writer.writerow([sector['sector'], sector['count']])
+        
+        return response
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error exporting summary: {str(e)}'
         }, status=400)
 

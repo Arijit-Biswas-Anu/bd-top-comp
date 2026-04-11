@@ -1,0 +1,454 @@
+{% extends 'companies/base_startups.html' %}
+
+{% block title %}Bangladesh EdTech Startups - Online Learning Directory{% endblock %}
+
+{% block content %}
+<!-- Page Header / Hero Section -->
+<div class="page-header">
+    <h1>Bangladesh EdTech Startups</h1>
+    <p>Discover innovative online education platforms from Bangladesh across various sectors</p>
+</div>
+
+<!-- Search & Filter Section -->
+<div class="search-filter-section">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label for="searchInput" class="form-label">Search Companies</label>
+            <input 
+                type="text" 
+                class="form-control" 
+                id="searchInput" 
+                placeholder="Enter company name or sector..."
+                aria-label="Search companies"
+            >
+        </div>
+        <div class="col-md-6">
+            <label for="sectorFilter" class="form-label">Filter by Sector</label>
+            <select class="form-select" id="sectorFilter">
+                <option value="">All Sectors</option>
+                <option value="Telecom">Telecommunications</option>
+                <option value="Banking">Banking & Finance</option>
+                <option value="Pharmaceuticals">Pharmaceuticals</option>
+                <option value="Energy">Energy</option>
+                <option value="Consumer Goods">Consumer Goods</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="Technology">Technology</option>
+                <option value="Shipping">Shipping</option>
+                <option value="Conglomerate">Conglomerate</option>
+            </select>
+        </div>
+    </div>
+    <div class="row g-2 mt-2">
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" id="advancedFilterBtn" onclick="showAdvancedFilters()">
+                ⚙ Advanced Filters
+            </button>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" id="clearFilterBtn" onclick="clearAllFilters()">
+                ✕ Clear Filters
+            </button>
+        </div>
+    </div>
+    <div class="search-filter-info">
+        Results update instantly as you search and filter
+    </div>
+</div>
+
+<!-- Admin Controls -->
+{% if user.is_authenticated %}
+<div class="admin-controls">
+    <button class="btn btn-primary" id="addStartupBtn">
+        ✚ Add New Company
+    </button>
+    <button class="btn btn-success" onclick="exportToCSV()" title="Download as CSV">
+        ⬇ Export CSV
+    </button>
+    <button class="btn btn-info" onclick="exportSummary()" title="Download summary report">
+        📊 Export Summary
+    </button>
+    
+    <!-- Phase 12: Advanced Filtering Dropdowns -->
+    <div class="btn-group" role="group">
+        <button class="btn btn-outline-secondary dropdown-toggle" id="historyBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Search history">
+            🕐 History
+        </button>
+        <ul class="dropdown-menu" id="searchHistoryDropdown">
+            <li><a class="dropdown-item" href="#">No history</a></li>
+        </ul>
+    </div>
+    
+    <div class="btn-group" role="group">
+        <button class="btn btn-outline-secondary dropdown-toggle" id="presetsBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Filter presets">
+            📋 Presets
+        </button>
+        <ul class="dropdown-menu" id="presetsDropdown">
+            <li><a class="dropdown-item" href="#">No presets</a></li>
+        </ul>
+    </div>
+    
+    <!-- Phase 13B: Analytics Button -->
+    <button class="btn btn-warning" id="analyticsBtn" onclick="showAnalyticsDashboard()" title="View analytics dashboard">
+        📈 Analytics
+    </button>
+    
+    <span class="admin-badge">👤 Admin Mode</span>
+</div>
+{% endif %}
+
+<!-- Pagination & Display Controls -->
+<div class="display-controls" id="displayControls" style="display: none;">
+    <div class="row g-2 mt-2 mb-2">
+        <div class="col-auto">
+            <label for="pageLimitSelect" class="form-label mb-0">Results per page:</label>
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" id="pageLimitSelect" style="width: 80px;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="9999">All</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Section -->
+<div class="statistics-section" id="statsSection" style="display: none;">
+    <h6>📊 Directory Statistics</h6>
+    <div class="sector-stats" id="sectorStatsList">
+        <!-- Populated by JavaScript -->
+    </div>
+</div>
+
+<!-- Results Info -->
+<div class="results-info" id="resultsInfo" style="display: none;">
+    Showing <strong id="resultsCount">0</strong> of <strong id="totalCount">0</strong> startups
+</div>
+
+<!-- Startups Table -->
+<div class="table-wrapper">
+    <table class="table table-striped" id="startupsTable">
+        <thead>
+            <tr>
+                <th class="rank-col">Rank</th>
+                <th class="logo-col">Logo</th>
+                <th class="name-col sortable" onclick="handleSort('name')" title="Click to sort">Startup Name</th>
+                <th class="sector-col sortable" onclick="handleSort('sector')" title="Click to sort">Sector</th>
+                <th class="founders-col">Founders</th>
+                <th class="hq-col">Headquarters</th>
+                <th class="founded-col sortable" onclick="handleSort('year_founded')" title="Click to sort">Founded</th>
+                <th class="funding-col">Total Funding</th>
+                {% if user.is_authenticated %}
+                    <th class="actions-col">Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody id="startupsTableBody">
+            <tr>
+                <td colspan="{% if user.is_authenticated %}9{% else %}8{% endif %}" class="text-center py-5">
+                    <div class="loading-state">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3">Loading companies...</p>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination Controls -->
+<div class="pagination-controls" id="paginationControls" style="display: none;">
+    <nav aria-label="Company listings pagination">
+        <ul class="pagination justify-content-center">
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(1)">First</a></li>
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(Math.max(1, currentPage - 1))">← Previous</a></li>
+            <li class="page-item disabled" id="pageInfo"><span class="page-link">Page 1 of 1</span></li>
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(Math.min(totalPages, currentPage + 1))">Next →</a></li>
+            <li class="page-item"><a class="page-link" href="#" onclick="goToPage(totalPages)">Last</a></li>
+        </ul>
+    </nav>
+</div>
+
+<!-- No Results Message -->
+<div id="noResultsMessage" class="no-results" style="display: none;">
+    <h5>No Startups Found</h5>
+    <p>Try adjusting your search or filter criteria</p>
+</div>
+
+<!-- Add/Edit Company Modal -->
+<div class="modal fade" id="startupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="startupModalTitle">Add New Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="startupForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="companyId">
+
+                    <!-- Name & Sector Row -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startupName" class="form-label">Startup Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="startupName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="startupSector" class="form-label">Sector <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="startupSector" placeholder="e.g., K-12, test prep, upskilling" required>
+                        </div>
+                    </div>
+
+                    <!-- Founders -->
+                    <div class="mb-3">
+                        <label for="startupFounders" class="form-label">Founder(s) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="startupFounders" placeholder="Founder name(s)" required>
+                    </div>
+
+                    <!-- Logo URL -->
+                    <div class="mb-3">
+                        <label for="startupLogoUrl" class="form-label">Logo URL</label>
+                        <input type="url" class="form-control" id="startupLogoUrl" placeholder="https://example.com/logo.png">
+                        <small class="text-muted">Optional - Leave blank for no logo</small>
+                    </div>
+
+                    <!-- HQ & Founded Row -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startupHeadquarters" class="form-label">Headquarters <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="startupHeadquarters" placeholder="e.g., Dhaka, Bangladesh" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="startupYearFounded" class="form-label">Founded Year <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="startupYearFounded" min="1900" max="2026" required>
+                        </div>
+                    </div>
+
+                    <!-- Total Funding -->
+                    <div class="mb-3">
+                        <label for="startupTotalFunding" class="form-label">Total Funding</label>
+                        <input type="text" class="form-control" id="startupTotalFunding" placeholder="e.g., $9.26M">
+                        <small class="text-muted">Optional</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitStartupBtn">Save Startup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Company Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Startup Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <img id="detailLogo" src="" alt="Company Logo" class="detail-logo" onerror="this.style.display='none';">
+                </div>
+                
+                <div class="detail-modal-content">
+                    <div class="detail-field">
+                        <div class="detail-label">Startup Name</div>
+                        <div class="detail-value" id="detailName"></div>
+                    </div>
+                    
+                    <div class="detail-field">
+                        <div class="detail-label">Sector</div>
+                        <div class="detail-value">
+                            <span class="sector-badge" id="detailSector"></span>
+                        </div>
+                    </div>
+
+                    <div class="detail-field">
+                        <div class="detail-label">Founder(s)</div>
+                        <div class="detail-value" id="detailFounders"></div>
+                    </div>
+                    
+                    <div class="detail-field">
+                        <div class="detail-label">Headquarters</div>
+                        <div class="detail-value" id="detailHQ"></div>
+                    </div>
+                    
+                    <div class="detail-field">
+                        <div class="detail-label">Founded Year</div>
+                        <div class="detail-value" id="detailFounded"></div>
+                    </div>
+
+                    <div class="detail-field">
+                        <div class="detail-label">Total Funding</div>
+                        <div class="detail-value" id="detailFunding"></div>
+                    </div>
+                    
+                    <div class="detail-field">
+                        <div class="detail-label">Added On</div>
+                        <div class="detail-value" id="detailCreated"></div>
+                    </div>
+                    
+                    <div class="detail-field" id="updatedField" style="display:none;">
+                        <div class="detail-label">Updated</div>
+                        <div class="detail-value" id="detailUpdated"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                {% if user.is_authenticated %}
+                    <button type="button" class="btn btn-warning" id="editDetailBtn" onclick="editStartupFromDetail()">Edit</button>
+                    <button type="button" class="btn btn-danger" id="deleteDetailBtn" onclick="deleteStartupFromDetail()">Delete</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Filter Panel (Mobile-Friendly Slide-up) -->
+<div class="filter-modal-overlay" id="advancedFilterPanel" style="display: none;">
+    <div class="filter-panel">
+        <div class="filter-panel-header">
+            <h5>Advanced Filters</h5>
+            <button type="button" class="btn-close" onclick="closeAdvancedFilters()" aria-label="Close"></button>
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterSearch">Search</label>
+            <input type="text" class="form-control" id="filterSearch" placeholder="Company name, sector, HQ...">
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterSector">Sector</label>
+            <select class="form-select" id="filterSector">
+                <option value="">All Sectors</option>
+                <option value="Telecom">Telecommunications</option>
+                <option value="Banking">Banking & Finance</option>
+                <option value="Pharmaceuticals">Pharmaceuticals</option>
+                <option value="Energy">Energy</option>
+                <option value="Consumer Goods">Consumer Goods</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="Technology">Technology</option>
+                <option value="Shipping">Shipping</option>
+                <option value="Conglomerate">Conglomerate</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterFounded">Founded After</label>
+            <input type="number" class="form-control" id="filterFounded" placeholder="e.g., 1990" min="1900" max="2026">
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterHQ">Headquarters</label>
+            <input type="text" class="form-control" id="filterHQ" placeholder="City or location...">
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterSort">Sort By</label>
+            <select class="form-select" id="filterSort">
+                <option value="name">Startup Name</option>
+                <option value="founded">Founded Year</option>
+                <option value="sector">Sector</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="filterOrder">Order</label>
+            <select class="form-select" id="filterOrder">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
+        </div>
+        
+        <div class="filter-button-group">
+            <button type="button" class="btn btn-secondary" onclick="closeAdvancedFilters()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="applyAdvancedFilters()">Apply Filters</button>
+        </div>
+    </div>
+</div>
+
+<!-- Phase 13B: Analytics Dashboard Modal -->
+<div class="modal fade" id="analyticsDashboardModal" tabindex="-1" aria-labelledby="analyticsDashboardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content analytics-modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="analyticsDashboardLabel">📊 Analytics Dashboard</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="analyticsDashboardBody">
+                <div class="row">
+                    <!-- Analytics Stats Cards -->
+                    <div class="col-md-12 mb-4">
+                        <div class="row" id="analyticsStatsCards">
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Total Companies</h6> <p id="totalStartupsCard" class="stat-value">--</p> </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Total Sectors</h6> <p id="totalSectorsCard" class="stat-value">--</p> </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Avg Founded Year</h6> <p id="avgFoundedCard" class="stat-value">--</p> </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card"> <h6>Year Range</h6> <p id="yearRangeCard" class="stat-value small">--</p> </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts -->
+                    <div class="col-md-6 mb-4">
+                        <h6>Sector Distribution</h6>
+                        <div class="chart-container">
+                            <canvas id="sectorChart" style="max-height: 300px;"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <h6>Founded Decade Distribution</h6>
+                        <div class="chart-container">
+                            <canvas id="decadeChart" style="max-height: 300px;"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Companies -->
+                    <div class="col-md-12 mb-4">
+                        <h6>Recently Added Companies</h6>
+                        <div class="recent-companies-list" id="recentStartupsList">
+                            <p class="text-muted text-center">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="exportAnalytics()">📥 Export Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<script>
+    // Initialize page when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStartups();
+        initSearch();
+        initSectorFilter();
+        initAddStartup();
+    });
+</script>
+{% endblock %}
