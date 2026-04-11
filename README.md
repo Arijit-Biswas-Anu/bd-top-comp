@@ -1,6 +1,6 @@
-# Bangladesh Top Companies (bd-top-comp)
+# Bangladesh EdTech Startups (bd-edtech-startups)
 
-A modern Django-based web application showcasing the top companies in Bangladesh with comprehensive analytics, management features, and API endpoints.
+A modern Django-based web application showcasing innovative EdTech startups in Bangladesh with comprehensive analytics, management features, and API endpoints.
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Django](https://img.shields.io/badge/Django-4.0+-darkgreen.svg)
@@ -19,13 +19,14 @@ A modern Django-based web application showcasing the top companies in Bangladesh
 
 ## 🌟 Key Highlights
 
-- **14+ companies** in Bangladesh's top business landscape
-- **7+ sectors** covering diverse industries
-- **Advanced analytics** with sector distribution and trends
+- **20 EdTech startups** featured in Bangladesh's education technology landscape
+- **Multi-category sectors** including K-12, test prep, upskilling, coding, and more
+- **Founder information** showcasing entrepreneurial talent
+- **Advanced analytics** with sector distribution and funding insights
 - **RESTful API** with 15+ endpoints
-- **Admin dashboard** for company management
+- **Admin dashboard** for startup management
 - **Data export** to CSV format
-- **85%+ test coverage** with comprehensive test suite
+- **AJAX-powered UI** with real-time filtering and search
 - **Production-ready** with security best practices
 
 ## Table of Contents
@@ -44,26 +45,26 @@ A modern Django-based web application showcasing the top companies in Bangladesh
 
 ### 🌟 Core Features
 
-- **Company Database**: Comprehensive database of 14+ top Bangladesh companies
-- **Search & Filter**: Advanced search across company name, sector, headquarters
+- **Startup Database**: 20 innovative EdTech startups in Bangladesh
+- **Search & Filter**: Advanced search across startup name, sector, founders, headquarters
 - **Analytics Dashboard**: Real-time statistics and insights
-- **Sector Analysis**: Detailed breakdown by business sectors
+- **Sector Analysis**: Detailed breakdown by EdTech categories
 - **Data Export**: Export companies to CSV with filters
 - **RESTful API**: Complete API for programmatic access
 
 ### 👨‍💼 Admin Features
 
-- **CRUD Operations**: Create, read, update, delete companies
-- **Bulk Operations**: Import/export companies in bulk
+- **CRUD Operations**: Create, read, update, delete startups
+- **Startup Management**: Add founders, funding, and sector info
+- **Bulk Operations**: Import/export startups in bulk
 - **User Management**: Admin panel for user access control
-- **Audit Logs**: Track all changes to company records
 
 ### 📊 Analytics Features
 
-- **Dashboard**: Company statistics at a glance
-- **Sector Distribution**: Visual breakdown of companies by sector
-- **Decade Analysis**: Historical distribution of company founding dates
-- **Statistical Analysis**: Mean, median, standard deviation
+- **Dashboard**: EdTech startup statistics at a glance
+- **Sector Distribution**: Visual breakdown of startups by EdTech category
+- **Funding Analysis**: Insights into startup funding landscape
+- **Statistical Analysis**: Mean, median, standard deviation of founding years
 
 ### 🔒 Security Features
 
